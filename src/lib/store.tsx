@@ -7,6 +7,7 @@ interface AppState {
   userId: string
   me: Profile | null
   myRole: Role
+  isOwner: boolean
   profiles: Record<string, Profile>
   members: Member[]
   channels: Channel[]
@@ -63,7 +64,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
     let alive = true
     const load = async () => {
       const [m, c] = await Promise.all([
-        supabase.from('members').select('user_id, role, joined_at'),
+        supabase.from('members').select('user_id, role, is_owner, joined_at'),
         supabase.from('channels').select('id, name, kind, topic, position').order('position'),
       ])
       if (!alive) return
@@ -174,6 +175,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       userId,
       me: profiles[userId] ?? null,
       myRole: members.find((m) => m.user_id === userId)?.role ?? 'member',
+      isOwner: members.find((m) => m.user_id === userId)?.is_owner ?? false,
       profiles,
       members,
       channels,

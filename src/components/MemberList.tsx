@@ -26,7 +26,7 @@ export default function MemberList() {
                 <div key={m.user_id} className={`member role-${m.role}`}>
                   <Avatar profile={profiles[m.user_id]} userId={m.user_id} size={32} status={p.status} />
                   <div className="member-text">
-                    <div className="member-name">{name(m.user_id) || 'Üye'}</div>
+                    <div className="member-name">{name(m.user_id) || 'Üye'}{m.is_owner && <span className="owner-tag">SAHİP</span>}</div>
                     {p.streaming ? (
                       <div className="member-sub live">Yayında</div>
                     ) : p.voice_channel_id ? (

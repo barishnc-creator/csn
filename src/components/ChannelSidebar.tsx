@@ -45,6 +45,11 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
             </button>
           )}
           {myRole === 'admin' && (
+            <button onClick={() => { setMenu(false); onOpenSettings('revisions') }}>
+              <Icon name="file" size={16} /> Revizeler
+            </button>
+          )}
+          {myRole === 'admin' && (
             <button onClick={() => { setMenu(false); onOpenSettings('members') }}>
               <Icon name="gear" size={16} /> Üyeler ve roller
             </button>

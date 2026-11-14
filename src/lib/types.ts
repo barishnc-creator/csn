@@ -12,7 +12,24 @@ export interface Profile {
 export interface Member {
   user_id: string
   role: Role
+  is_owner: boolean
   joined_at: string
+}
+
+export type RevisionStatus = 'pending' | 'approved' | 'rejected' | 'in_progress' | 'done'
+
+export interface Revision {
+  id: number
+  title: string
+  description: string
+  status: RevisionStatus
+  created_by: string
+  created_at: string
+  decided_by: string | null
+  decided_at: string | null
+  owner_note: string | null
+  dev_note: string | null
+  updated_at: string
 }
 
 export interface Channel {

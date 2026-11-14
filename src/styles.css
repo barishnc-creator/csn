@@ -317,3 +317,33 @@ h3 { font-size: 13px; text-transform: uppercase; color: var(--text-2); margin-to
 label > input, label > select, label > textarea { font-size: 15px; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--text); }
 .auth-card h1 { margin: 0; }
 .auth-card > .muted { margin: -6px 0 4px; }
+
+/* ── Sahip ve revizeler ── */
+.owner-tag { margin-left: 6px; background: rgba(240,178,50,.18); color: #ffd98a; font-size: 10px; font-weight: 800; padding: 1px 5px; border-radius: 4px; letter-spacing: .03em; vertical-align: middle; }
+select:disabled { opacity: .6; cursor: not-allowed; }
+.notice { background: rgba(240,178,50,.1); border: 1px solid rgba(240,178,50,.35); color: #ffd98a; border-radius: 8px; padding: 10px 12px; display: flex; gap: 8px; align-items: center; }
+.revision-form { display: flex; flex-direction: column; gap: 8px; background: var(--bg-1); border-radius: 10px; padding: 14px; }
+.revision-form textarea { resize: vertical; }
+.filter-tabs { display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.filter-tabs button { padding: 6px 12px; border-radius: 6px; color: var(--text-2); display: inline-flex; gap: 6px; align-items: center; }
+.filter-tabs button:hover { background: var(--bg-hover); }
+.filter-tabs button.active { background: var(--bg-active); color: var(--text); }
+.revision-card { background: var(--bg-1); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 8px; border-left: 4px solid var(--line); }
+.revision-card.status-pending { border-left-color: var(--yellow); }
+.revision-card.status-approved, .revision-card.status-in_progress { border-left-color: var(--accent); }
+.revision-card.status-done { border-left-color: var(--green); }
+.revision-card.status-rejected { border-left-color: var(--red); opacity: .75; }
+.revision-head { display: flex; align-items: center; gap: 8px; }
+.revision-head-actions { margin-left: auto; display: flex; gap: 2px; }
+.status-pill { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; background: var(--bg-active); }
+.status-pill.pending { background: rgba(240,178,50,.18); color: #ffd98a; }
+.status-pill.approved, .status-pill.in_progress { background: rgba(108,92,231,.25); color: #c9c2ff; }
+.status-pill.done { background: rgba(47,191,113,.18); color: #7fe0aa; }
+.status-pill.rejected { background: rgba(236,75,85,.18); color: #ff8a92; }
+.revision-title { font-weight: 700; font-size: 16px; }
+.revision-desc { white-space: pre-wrap; color: var(--text-2); }
+.revision-meta { display: flex; align-items: center; gap: 6px; font-size: 13px; flex-wrap: wrap; }
+.revision-note { font-size: 13px; background: var(--bg-2); border-radius: 6px; padding: 8px 10px; color: var(--text-2); }
+.revision-note.dev { border-left: 3px solid var(--accent); }
+.revision-owner { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 10px; }
+.revision-owner input { flex: 1; min-width: 200px; padding: 6px 9px; }

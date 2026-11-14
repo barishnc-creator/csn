@@ -7,8 +7,9 @@ import type { Channel, ChannelKind, Invite, Role } from '../lib/types'
 import { useVoice } from '../voice/VoiceContext'
 import Avatar from './Avatar'
 import Icon from './Icon'
+import RevisionsTab from './RevisionsTab'
 
-export type SettingsTab = 'profile' | 'voice' | 'invites' | 'channels' | 'members'
+export type SettingsTab = 'profile' | 'voice' | 'invites' | 'channels' | 'members' | 'revisions'
 
 export default function SettingsModal({ initialTab, onClose }: { initialTab: SettingsTab; onClose: () => void }) {
   const { myRole } = useApp()
@@ -28,6 +29,7 @@ export default function SettingsModal({ initialTab, onClose }: { initialTab: Set
     { id: 'invites', label: 'Davetler', show: isMod, group: 'Sunucu' },
     { id: 'channels', label: 'Kanallar', show: isAdmin, group: 'Sunucu' },
     { id: 'members', label: 'Üyeler ve roller', show: isAdmin, group: 'Sunucu' },
+    { id: 'revisions', label: 'Revizeler', show: isAdmin, group: 'Sunucu' },
   ]
   const groups = [...new Set(tabs.filter((t) => t.show).map((t) => t.group))]
 
@@ -53,6 +55,7 @@ export default function SettingsModal({ initialTab, onClose }: { initialTab: Set
           {tab === 'invites' && isMod && <InvitesTab />}
           {tab === 'channels' && isAdmin && <ChannelsTab />}
           {tab === 'members' && isAdmin && <MembersTab />}
+          {tab === 'revisions' && isAdmin && <RevisionsTab />}
         </section>
       </div>
     </div>
@@ -445,23 +448,23 @@ function MembersTab() {
   return (
     <div className="settings-page">
       <h2>Üyeler ve roller</h2>
-      <p className="muted">Yönetici: her şeyi yönetir. Moderatör: davet oluşturur, mesaj siler. Üye: sohbet eder.</p>
+      <p className="muted">Sahip: sunucunun kurucusu, revizeleri onaylar, kimse rolünü değiştiremez. Yönetici: her şeyi yönetir. Moderatör: davet oluşturur, mesaj siler. Üye: sohbet eder.</p>
       {error && <div className="form-error">{error}</div>}
       <table className="table">
         <thead><tr><th>Üye</th><th>Katılma</th><th>Rol</th><th /></tr></thead>
         <tbody>
           {sorted.map((m) => (
             <tr key={m.user_id}>
-              <td className="row"><Avatar profile={profiles[m.user_id]} userId={m.user_id} size={28} /> {profiles[m.user_id]?.display_name ?? 'Üye'}{m.user_id === userId && ' (sen)'}</td>
+              <td className="row"><Avatar profile={profiles[m.user_id]} userId={m.user_id} size={28} /> {profiles[m.user_id]?.display_name ?? 'Üye'}{m.user_id === userId && ' (sen)'}{m.is_owner && <span className="owner-tag">SAHİP</span>}</td>
               <td>{new Date(m.joined_at).toLocaleDateString('tr-TR')}</td>
               <td>
-                <select value={m.role} onChange={(e) => setRole(m.user_id, e.target.value as Role)}>
+                <select value={m.role} disabled={m.is_owner} onChange={(e) => setRole(m.user_id, e.target.value as Role)}>
                   <option value="admin">Yönetici</option>
                   <option value="mod">Moderatör</option>
                   <option value="member">Üye</option>
                 </select>
               </td>
-              <td>{m.user_id !== userId && <button className="btn danger small" onClick={() => kick(m.user_id)}>At</button>}</td>
+              <td>{m.user_id !== userId && !m.is_owner && <button className="btn danger small" onClick={() => kick(m.user_id)}>At</button>}</td>
             </tr>
           ))}
         </tbody>
