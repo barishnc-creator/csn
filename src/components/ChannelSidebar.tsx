@@ -1,0 +1,193 @@
+import { useState } from 'react'
+import { useApp } from '../lib/store'
+import { supabase } from '../lib/supabase'
+import { useVoice } from '../voice/VoiceContext'
+import Avatar from './Avatar'
+import Icon from './Icon'
+import VolumePopover from './VolumePopover'
+import type { SettingsTab } from './SettingsModal'
+
+interface Props {
+  currentId: string | null
+  onSelect: (id: string) => void
+  unread: Record<string, number>
+  mentions: Record<string, number>
+  onOpenSettings: (tab: SettingsTab) => void
+}
+
+export default function ChannelSidebar({ currentId, onSelect, unread, mentions, onOpenSettings }: Props) {
+  const { channels, presence, profiles, myRole, userId } = useApp()
+  const voice = useVoice()
+  const [menu, setMenu] = useState(false)
+  const [volumeFor, setVolumeFor] = useState<{ id: string; x: number; y: number } | null>(null)
+
+  const text = channels.filter((c) => c.kind === 'text')
+  const voiceChannels = channels.filter((c) => c.kind === 'voice')
+  const speaking = new Set(voice.participants.filter((p) => p.speaking).map((p) => p.id))
+  const isMod = myRole === 'admin' || myRole === 'mod'
+
+  return (
+    <aside className="sidebar">
+      <header className="sidebar-header" onClick={() => setMenu((m) => !m)}>
+        <span>CSN</span>
+        <Icon name={menu ? 'x' : 'chevronDown'} size={18} />
+      </header>
+      {menu && (
+        <div className="dropdown" onMouseLeave={() => setMenu(false)}>
+          {isMod && (
+            <button onClick={() => { setMenu(false); onOpenSettings('invites') }}>
+              <Icon name="users" size={16} /> Arkadaş davet et
+            </button>
+          )}
+          {myRole === 'admin' && (
+            <button onClick={() => { setMenu(false); onOpenSettings('channels') }}>
+              <Icon name="plusCircle" size={16} /> Kanalları yönet
+            </button>
+          )}
+          {myRole === 'admin' && (
+            <button onClick={() => { setMenu(false); onOpenSettings('members') }}>
+              <Icon name="gear" size={16} /> Üyeler ve roller
+            </button>
+          )}
+          <button onClick={() => { setMenu(false); onOpenSettings('profile') }}>
+            <Icon name="edit" size={16} /> Profilimi düzenle
+          </button>
+          <button className="danger" onClick={() => supabase.auth.signOut()}>
+            <Icon name="logout" size={16} /> Çıkış yap
+          </button>
+        </div>
+      )}
+
+      <div className="channel-scroll">
+        <div className="category">Metin kanalları</div>
+        {text.map((c) => {
+          const n = unread[c.id] ?? 0
+          const m = mentions[c.id] ?? 0
+          return (
+            <button
+              key={c.id}
+              className={`channel${c.id === currentId ? ' active' : ''}${n ? ' unread' : ''}`}
+              onClick={() => onSelect(c.id)}
+            >
+              <Icon name="hash" size={18} className="channel-icon" />
+              <span className="channel-name">{c.name}</span>
+              {m > 0 && <span className="badge">{m}</span>}
+            </button>
+          )
+        })}
+
+        <div className="category">Ses kanalları</div>
+        {voiceChannels.map((c) => {
+          const inside = Object.values(presence).filter((p) => p.voice_channel_id === c.id)
+          return (
+            <div key={c.id}>
+              <button
+                className={`channel${c.id === currentId ? ' active' : ''}${voice.channelId === c.id ? ' connected' : ''}`}
+                onClick={() => onSelect(c.id)}
+              >
+                <Icon name="speaker" size={18} className="channel-icon" />
+                <span className="channel-name">{c.name}</span>
+                {voice.connecting && voice.channelId !== c.id && currentId === c.id && <span className="mini-spinner" />}
+              </button>
+              {inside.map((p) => (
+                <div
+                  key={p.user_id}
+                  className="voice-user"
+                  onContextMenu={(e) => {
+                    if (p.user_id === userId || voice.channelId !== c.id) return
+                    e.preventDefault()
+                    setVolumeFor({ id: p.user_id, x: e.clientX, y: e.clientY })
+                  }}
+                  title={p.user_id !== userId && voice.channelId === c.id ? 'Sağ tık: ses seviyesi' : undefined}
+                >
+                  <Avatar profile={profiles[p.user_id]} userId={p.user_id} size={22} speaking={speaking.has(p.user_id)} />
+                  <span className="voice-user-name">{profiles[p.user_id]?.display_name ?? 'Üye'}</span>
+                  {p.streaming && <span className="live-tag">CANLI</span>}
+                  {p.deafened ? (
+                    <Icon name="headphonesOff" size={14} className="voice-flag" />
+                  ) : p.muted ? (
+                    <Icon name="micOff" size={14} className="voice-flag" />
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          )
+        })}
+      </div>
+
+      {voice.channelId && <VoiceBar />}
+      <UserPanel onOpenSettings={onOpenSettings} />
+
+      {volumeFor && (
+        <VolumePopover userId={volumeFor.id} x={volumeFor.x} y={volumeFor.y} onClose={() => setVolumeFor(null)} />
+      )}
+    </aside>
+  )
+}
+
+function VoiceBar() {
+  const voice = useVoice()
+  const { channels } = useApp()
+  const ch = channels.find((c) => c.id === voice.channelId)
+  return (
+    <div className="voice-bar">
+      <div className="voice-bar-top">
+        <div>
+          <div className="voice-bar-status">
+            <Icon name="live" size={16} /> Ses bağlandı
+          </div>
+          <div className="voice-bar-channel">{ch?.name ?? ''}</div>
+        </div>
+        <button className="icon-btn" title="Bağlantıyı kes" onClick={voice.leave}>
+          <Icon name="phoneOff" />
+        </button>
+      </div>
+      <div className="voice-bar-actions">
+        <button className={`pill-btn${voice.cameraOn ? ' on' : ''}`} onClick={voice.toggleCamera} title="Kamera">
+          <Icon name={voice.cameraOn ? 'camera' : 'cameraOff'} size={18} />
+        </button>
+        <button className={`pill-btn${voice.screenOn ? ' on' : ''}`} onClick={voice.toggleScreen} title="Ekran paylaş">
+          <Icon name="screen" size={18} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function UserPanel({ onOpenSettings }: { onOpenSettings: (tab: SettingsTab) => void }) {
+  const { me, userId, myStatus, setMyStatus } = useApp()
+  const voice = useVoice()
+  const [statusMenu, setStatusMenu] = useState(false)
+  const labels = { online: 'Çevrimiçi', idle: 'Boşta', dnd: 'Rahatsız etmeyin' } as const
+
+  return (
+    <div className="user-panel">
+      <button className="user-panel-me" onClick={() => setStatusMenu((s) => !s)}>
+        <Avatar profile={me} userId={userId} size={32} status={myStatus} speaking={voice.pttActive} />
+        <div className="user-panel-text">
+          <div className="user-panel-name">{me?.display_name ?? '…'}</div>
+          <div className="user-panel-status">{me?.custom_status || labels[myStatus]}</div>
+        </div>
+      </button>
+      {statusMenu && (
+        <div className="dropdown status-menu" onMouseLeave={() => setStatusMenu(false)}>
+          <button onClick={() => { setMyStatus('online'); setStatusMenu(false) }}>
+            <span className="status-dot static online" /> Çevrimiçi
+          </button>
+          <button onClick={() => { setMyStatus('dnd'); setStatusMenu(false) }}>
+            <span className="status-dot static dnd" /> Rahatsız etmeyin
+          </button>
+        </div>
+      )}
+      <button className={`icon-btn${voice.muted ? ' danger' : ''}`} onClick={voice.toggleMute} title={voice.muted ? 'Mikrofonu aç' : 'Sustur'}>
+        <Icon name={voice.muted ? 'micOff' : 'mic'} />
+      </button>
+      <button className={`icon-btn${voice.deafened ? ' danger' : ''}`} onClick={voice.toggleDeafen} title={voice.deafened ? 'Sesi aç' : 'Sağırlaştır'}>
+        <Icon name={voice.deafened ? 'headphonesOff' : 'headphones'} />
+      </button>
+      <button className="icon-btn" onClick={() => onOpenSettings('voice')} title="Ayarlar">
+        <Icon name="gear" />
+      </button>
+    </div>
+  )
+}
