@@ -137,7 +137,9 @@ export default function Layout() {
     if (ch.kind === 'voice' && voice.channelId !== id) voice.join(id)
   }
 
-  const dmUnread = dmChannels.reduce((a, c) => a + (unread[c.id] ?? 0), 0)
+  const { friendships } = useApp()
+  const incomingRequests = friendships.filter((f) => f.status === 'pending' && f.addressee === userId).length
+  const dmUnread = dmChannels.reduce((a, c) => a + (unread[c.id] ?? 0), 0) + incomingRequests
 
   return (
     <div className="app">

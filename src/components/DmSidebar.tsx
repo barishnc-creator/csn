@@ -14,7 +14,8 @@ interface Props {
 }
 
 export default function DmSidebar({ currentId, onSelect, unread, onOpenSettings }: Props) {
-  const { channels, dmPartner, profiles, presence, members, userId, openDm, select } = useApp()
+  const { channels, dmPartner, profiles, presence, members, userId, openDm, select, friendships } = useApp()
+  const incomingCount = friendships.filter((f) => f.status === 'pending' && f.addressee === userId).length
   const voice = useVoice()
   const [query, setQuery] = useState('')
   const [picking, setPicking] = useState(false)
@@ -43,6 +44,7 @@ export default function DmSidebar({ currentId, onSelect, unread, onOpenSettings 
         <button className={`dm-item friends-link${currentId === null ? ' active' : ''}`} onClick={() => select(null, 'dm')}>
           <span className="friends-icon"><Icon name="friends" size={18} /></span>
           <span className="dm-name">Arkadaşlar</span>
+          {incomingCount > 0 && <span className="badge">{incomingCount}</span>}
         </button>
         <div className="category">Özel mesajlar</div>
         {picking && (

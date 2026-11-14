@@ -6,6 +6,7 @@ import type {
   Channel,
   ChannelMember,
   CustomRole,
+  Friendship,
   Member,
   MemberRole,
   Permission,
@@ -35,6 +36,9 @@ interface AppState {
   roles: CustomRole[]
   memberRoles: MemberRole[]
   dmMembers: ChannelMember[]
+  friendships: Friendship[]
+  /** none | friends | outgoing | incoming */
+  friendState: (uid: string) => { state: 'none' | 'friends' | 'outgoing' | 'incoming'; id?: number }
   presence: Record<string, PresenceState>
   myStatus: UserStatus
   setMyStatus: (s: UserStatus) => void
@@ -97,6 +101,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
   const [roles, setRoles] = useState<CustomRole[]>([])
   const [memberRoles, setMemberRoles] = useState<MemberRole[]>([])
   const [dmMembers, setDmMembers] = useState<ChannelMember[]>([])
+  const [friendships, setFriendships] = useState<Friendship[]>([])
   const [presence, setPresence] = useState<Record<string, PresenceState>>({})
   const [mode, setMode] = useState<ViewMode>('server')
   const [selectedId, setSelectedId] = useState<string | null>(() => readLS(LAST_KEY))
@@ -141,6 +146,11 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
     if (mr.data) setMemberRoles(mr.data as MemberRole[])
   }, [])
 
+  const refreshFriends = useCallback(async () => {
+    const { data } = await supabase.from('friendships').select('id, requester, addressee, status, created_at, accepted_at')
+    if (data) setFriendships(data as Friendship[])
+  }, [])
+
   // İlk yükleme + canlı güncellemeler
   useEffect(() => {
     let alive = true
@@ -151,6 +161,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
         refreshChannels(),
         refreshRoles(),
         refreshProfiles(),
+        refreshFriends(),
       ])
       if (!alive) return
       if (m.data) setMembers(m.data as Member[])
@@ -163,6 +174,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       .on('postgres_changes', { event: '*', schema: 'public', table: 'channels' }, () => refreshChannels())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'channel_members' }, () => refreshChannels())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'roles' }, () => refreshRoles())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, () => refreshFriends())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'member_roles' }, () => {
         refreshRoles()
         refreshChannels() // gizli kanal erişimi değişmiş olabilir
@@ -198,7 +210,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       alive = false
       supabase.removeChannel(db)
     }
-  }, [refreshProfiles, refreshChannels, refreshRoles, userId])
+  }, [refreshProfiles, refreshChannels, refreshRoles, refreshFriends, userId])
 
   // Yeni sürüm denetimi: dakikada bir ve pencereye dönüldüğünde
   useEffect(() => {
@@ -322,6 +334,13 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       roles,
       memberRoles,
       dmMembers,
+      friendships,
+      friendState: (uid) => {
+        const f = friendships.find((x) => (x.requester === uid && x.addressee === userId) || (x.addressee === uid && x.requester === userId))
+        if (!f) return { state: 'none' }
+        if (f.status === 'accepted') return { state: 'friends', id: f.id }
+        return { state: f.requester === userId ? 'outgoing' : 'incoming', id: f.id }
+      },
       presence,
       myStatus: effectiveStatus,
       setMyStatus,
@@ -342,7 +361,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       dismissReload: () => setReloadNotice(null),
     }
   }, [
-    userId, profiles, members, channels, roles, memberRoles, dmMembers, presence, effectiveStatus,
+    userId, profiles, members, channels, roles, memberRoles, dmMembers, friendships, presence, effectiveStatus,
     setMyStatus, updatePresence, refreshProfiles, mode, selectedId, select, openDm, profileOf, reloadNotice,
   ])
 

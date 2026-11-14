@@ -109,3 +109,12 @@ export interface PresenceState {
   deafened: boolean
   streaming: boolean
 }
+
+export interface Friendship {
+  id: number
+  requester: string
+  addressee: string
+  status: 'pending' | 'accepted'
+  created_at: string
+  accepted_at: string | null
+}

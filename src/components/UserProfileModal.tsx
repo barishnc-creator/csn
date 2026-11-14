@@ -4,12 +4,14 @@ import type { Profile, Role } from '../lib/types'
 import { colorFor } from '../lib/format'
 import Avatar from './Avatar'
 import Icon from './Icon'
+import { FriendButton } from './FriendsView'
+import { acceptFriend, sendFriendRequest } from '../lib/friends'
 
 const baseRole: Record<Role, string> = { admin: 'Yönetici', mod: 'Moderatör', member: 'Üye' }
 const statusText = { online: 'Çevrimiçi', idle: 'Boşta', dnd: 'Rahatsız etmeyin', offline: 'Çevrimdışı' } as const
 
 export default function UserProfileModal({ userId, onClose, onEditProfile }: { userId: string; onClose: () => void; onEditProfile: () => void }) {
-  const { profiles, members, presence, rolesOf, userId: me, openDm, channels } = useApp()
+  const { profiles, members, presence, rolesOf, userId: me, openDm, channels, friendState } = useApp()
   const [busy, setBusy] = useState(false)
   const p = profiles[userId]
   const member = members.find((m) => m.user_id === userId)
@@ -64,6 +66,12 @@ export default function UserProfileModal({ userId, onClose, onEditProfile }: { u
                 {userId === me ? (
                   <button className="btn primary block" onClick={onEditProfile}><Icon name="edit" size={16} /> Profili düzenle</button>
                 ) : (
+                  <div className="profile-button-row">
+                  <FriendButton
+                    state={friendState(userId).state}
+                    onSend={() => sendFriendRequest(userId).catch((e) => alert(e.message))}
+                    onAccept={() => { const id = friendState(userId).id; if (id) acceptFriend(id) }}
+                  />
                   <button
                     className="btn primary block"
                     disabled={busy || !member}
@@ -75,6 +83,7 @@ export default function UserProfileModal({ userId, onClose, onEditProfile }: { u
                   >
                     <Icon name="message" size={16} /> Mesaj gönder
                   </button>
+                  </div>
                 )}
               </div>
             </>
