@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import type { Message } from '../lib/types'
 import { useVoice } from '../voice/VoiceContext'
 import { playSound } from '../voice/sounds'
+import { hardReload } from '../lib/version'
 import ChannelSidebar from './ChannelSidebar'
 import DmSidebar from './DmSidebar'
 import ChatView from './ChatView'
@@ -111,7 +112,7 @@ export default function Layout() {
   const [countdown, setCountdown] = useState<number | null>(null)
   useEffect(() => {
     if (!reloadNotice) return
-    if (voice.channelId) {
+    if (voice.channelId || !reloadNotice.forced) {
       setCountdown(null) // seste olanı zorla koparma
       return
     }
@@ -120,7 +121,7 @@ export default function Layout() {
       setCountdown((c) => {
         if (c === null) return null
         if (c <= 1) {
-          window.location.reload()
+          hardReload()
           return 0
         }
         return c - 1
@@ -204,11 +205,15 @@ export default function Layout() {
         <div className="reload-banner">
           <Icon name="refresh" size={18} />
           <div>
-            <strong>CSN güncellendi.</strong>{' '}
+            <strong>{reloadNotice.forced ? 'CSN güncellendi.' : 'Yeni sürüm hazır.'}</strong>{' '}
             {reloadNotice.note && <span>{reloadNotice.note} · </span>}
-            {countdown !== null ? `${countdown} saniye içinde yenileniyor…` : 'Sesli sohbettesin; hazır olduğunda yenile.'}
+            {countdown !== null
+              ? `${countdown} saniye içinde yenileniyor…`
+              : voice.channelId
+                ? 'Sesli sohbettesin; hazır olduğunda yenile.'
+                : 'Yeni özellikleri görmek için yenile.'}
           </div>
-          <button className="btn primary small" onClick={() => window.location.reload()}>Şimdi yenile</button>
+          <button className="btn primary small" onClick={hardReload}>Şimdi yenile</button>
           {countdown === null && <button className="btn ghost small" onClick={dismissReload}>Sonra</button>}
         </div>
       )}

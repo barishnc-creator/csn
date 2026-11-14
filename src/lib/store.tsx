@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from './supabase'
+import { BUILD_ID, fetchLatestBuild, hardReload } from './version'
 import type {
   Channel,
   ChannelMember,
@@ -19,6 +20,8 @@ export type ViewMode = 'server' | 'dm'
 export interface ReloadNotice {
   note: string | null
   by: string | null
+  /** true: sahip "Herkesi yenile" dedi (otomatik yenilenir); false: yeni sürüm kendiliğinden fark edildi */
+  forced: boolean
 }
 
 interface AppState {
@@ -167,7 +170,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       .on('postgres_changes', { event: '*', schema: 'public', table: 'members' }, (p) => {
         if (p.eventType === 'DELETE' && (p.old as Member).user_id === userId) {
           // Sunucudan çıkarıldım
-          window.location.reload()
+          hardReload()
           return
         }
         setMembers((prev) => {
@@ -186,7 +189,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
         const row = p.new as { reload_version: number; reload_note: string | null; reloaded_by: string | null }
         if (reloadVersion.current !== null && row.reload_version > reloadVersion.current) {
           reloadVersion.current = row.reload_version
-          setReloadNotice({ note: row.reload_note, by: row.reloaded_by })
+          setReloadNotice({ note: row.reload_note, by: row.reloaded_by, forced: true })
         }
       })
       .subscribe()
@@ -196,6 +199,27 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       supabase.removeChannel(db)
     }
   }, [refreshProfiles, refreshChannels, refreshRoles, userId])
+
+  // Yeni sürüm denetimi: dakikada bir ve pencereye dönüldüğünde
+  useEffect(() => {
+    if (BUILD_ID.startsWith('dev-')) return
+    let stopped = false
+    const check = async () => {
+      const latest = await fetchLatestBuild()
+      if (!stopped && latest && latest !== BUILD_ID) {
+        setReloadNotice((cur) => cur ?? { note: null, by: null, forced: false })
+      }
+    }
+    const t = window.setInterval(check, 60_000)
+    const onFocus = () => check()
+    window.addEventListener('focus', onFocus)
+    check()
+    return () => {
+      stopped = true
+      window.clearInterval(t)
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [])
 
   // Presence: kim çevrimiçi, kim hangi ses kanalında
   useEffect(() => {
