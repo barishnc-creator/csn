@@ -5,7 +5,8 @@
 //   LIVEKIT_URL         wss://<proje>.livekit.cloud
 //   LIVEKIT_API_KEY
 //   LIVEKIT_API_SECRET
-// SUPABASE_URL ve SUPABASE_SERVICE_ROLE_KEY Supabase tarafından otomatik verilir.
+// SUPABASE_URL ve sunucu anahtarı Supabase tarafından otomatik verilir.
+// verify_jwt kapalı dağıtılır: oturum aşağıda auth.getUser ile doğrulanır.
 
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { SignJWT } from 'npm:jose@5'
@@ -37,7 +38,19 @@ Deno.serve(async (req) => {
   const jwt = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '')
   if (!jwt) return json({ error: 'Giriş gerekli' }, 401)
 
-  const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+  // Yeni projelerde gizli anahtar SUPABASE_SECRET_KEYS içinde de gelebilir
+  let serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  if (!serviceKey) {
+    try {
+      const keys = JSON.parse(Deno.env.get('SUPABASE_SECRET_KEYS') ?? '{}')
+      serviceKey = keys.default ?? Object.values(keys)[0]
+    } catch {
+      // yoksay
+    }
+  }
+  if (!serviceKey) return json({ error: 'Sunucu anahtarı bulunamadı' }, 500)
+
+  const admin = createClient(Deno.env.get('SUPABASE_URL')!, serviceKey as string, {
     auth: { persistSession: false },
   })
 
