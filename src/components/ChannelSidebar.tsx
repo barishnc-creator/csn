@@ -13,9 +13,10 @@ interface Props {
   unread: Record<string, number>
   mentions: Record<string, number>
   onOpenSettings: (tab: SettingsTab) => void
+  onFriends: () => void
 }
 
-export default function ChannelSidebar({ currentId, onSelect, unread, mentions, onOpenSettings }: Props) {
+export default function ChannelSidebar({ currentId, onSelect, unread, mentions, onOpenSettings, onFriends }: Props) {
   const { channels, presence, profiles, myRole, userId, isOwner, can, openProfile } = useApp()
   const voice = useVoice()
   const [menu, setMenu] = useState(false)
@@ -28,9 +29,21 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
 
   return (
     <aside className="sidebar">
-      <header className="sidebar-header" onClick={() => setMenu((m) => !m)}>
-        <span>CSN</span>
-        <Icon name={menu ? 'x' : 'chevronDown'} size={18} />
+      <header className="sidebar-header">
+        <button className="sidebar-title" onClick={() => setMenu((m) => !m)} title="Sunucu menüsü">
+          <span className="server-mini">C</span>
+          <span>CSN</span>
+        </button>
+        <div className="sidebar-header-actions">
+          <button className="icon-btn" title="Arkadaşlar" onClick={onFriends}><Icon name="friends" size={18} /></button>
+          <button
+            className={`icon-btn${menu ? ' active' : ''}`}
+            title="Sunucu ayarları"
+            onClick={() => setMenu((m) => !m)}
+          >
+            <Icon name="gear" size={18} />
+          </button>
+        </div>
       </header>
       {menu && (
         <div className="dropdown" onMouseLeave={() => setMenu(false)}>
@@ -64,6 +77,7 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
               <Icon name="users" size={16} /> Üyeler
             </button>
           )}
+          <div className="dropdown-sep" />
           <button onClick={() => { setMenu(false); onOpenSettings('profile') }}>
             <Icon name="edit" size={16} /> Profilimi düzenle
           </button>
@@ -215,6 +229,9 @@ export function UserPanel({ onOpenSettings }: { onOpenSettings: (tab: SettingsTa
 
   return (
     <div className="user-panel">
+      <button className="icon-btn logout-btn" title="Çıkış yap" onClick={() => confirm('CSN hesabından çıkış yapılsın mı?') && supabase.auth.signOut()}>
+        <Icon name="logout" size={18} />
+      </button>
       <button className="user-panel-me" onClick={() => setStatusMenu((s) => !s)}>
         <Avatar profile={me} userId={userId} size={32} status={myStatus} speaking={voice.pttActive} />
         <div className="user-panel-text">

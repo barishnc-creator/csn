@@ -347,6 +347,11 @@ function VoiceTab() {
         <input type="checkbox" checked={s.echoCancellation} onChange={(e) => voice.updateSettings({ echoCancellation: e.target.checked })} />
         Yankı engelleme
       </label>
+      <label className="toggle">
+        <input type="checkbox" checked={s.aiNoise} onChange={(e) => voice.updateSettings({ aiNoise: e.target.checked })} />
+        Gelişmiş gürültü engelleme (yapay zekâ, RNNoise)
+      </label>
+      <p className="muted small">Klavye, fan ve oda gürültüsünü bastırır. Biraz daha fazla işlemci kullanır.</p>
 
       <h3>Kamera</h3>
       <select value={s.cameraId} onChange={(e) => voice.updateSettings({ cameraId: e.target.value })}>

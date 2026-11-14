@@ -15,6 +15,7 @@ import {
 import { supabase } from '../lib/supabase'
 import { useApp } from '../lib/store'
 import { playSound } from './sounds'
+import { RnnoiseProcessor } from './rnnoise'
 
 export type InputMode = 'vad' | 'ptt'
 
@@ -26,6 +27,7 @@ export interface VoiceSettings {
   cameraId: string
   noiseSuppression: boolean
   echoCancellation: boolean
+  aiNoise: boolean // RNNoise ile gelişmiş gürültü engelleme
   volumes: Record<string, number> // kullanıcı id → 0..2
 }
 
@@ -77,6 +79,7 @@ const defaults: VoiceSettings = {
   cameraId: '',
   noiseSuppression: true,
   echoCancellation: true,
+  aiNoise: true,
   volumes: {},
 }
 
@@ -193,6 +196,36 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  // Gelişmiş gürültü engelleme (RNNoise): mikrofon izine işlemci tak / çıkar.
+  // İz her yeniden oluşturulduğunda (katılma, ayar değişimi) syncMic sonrası tekrar çağrılır.
+  // Hata olursa sessizce normal ize düşer; sesi asla bozmaz.
+  const processorBusy = useRef<Promise<void>>(Promise.resolve())
+  const applyNoiseProcessor = useCallback(() => {
+    const run = async () => {
+      if (room.state !== ConnectionState.Connected) return
+      const track = room.localParticipant.getTrackPublication(Track.Source.Microphone)?.audioTrack
+      if (!track) return
+      const current = track.getProcessor()
+      try {
+        if (settingsRef.current.aiNoise) {
+          if (!(current instanceof RnnoiseProcessor)) await track.setProcessor(new RnnoiseProcessor())
+        } else if (current) {
+          await track.stopProcessor()
+        }
+      } catch (e) {
+        console.warn('RNNoise kullanılamadı, normal mikrofon izi kullanılıyor:', e)
+        try {
+          if (track.getProcessor()) await track.stopProcessor()
+        } catch {
+          // yoksay
+        }
+      }
+    }
+    // Aynı anda iki setProcessor çalışmasın diye sıraya al
+    processorBusy.current = processorBusy.current.then(run, run)
+    return processorBusy.current
+  }, [room])
+
   const syncMic = useCallback(
     async (m: boolean, ptt: boolean) => {
       if (room.state !== ConnectionState.Connected) return
@@ -207,9 +240,10 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         setError(`Mikrofon açılamadı: ${(e as Error).message}`)
       }
+      await applyNoiseProcessor()
       bump()
     },
-    [room, micShouldBeOn],
+    [room, micShouldBeOn, applyNoiseProcessor],
   )
 
   const leave = useCallback(() => {
@@ -351,9 +385,11 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
           await syncMic(muted, false)
         }
         run()
+      } else if (patch.aiNoise !== undefined) {
+        applyNoiseProcessor()
       }
     },
-    [room, muted, syncMic],
+    [room, muted, syncMic, applyNoiseProcessor],
   )
 
   // Bas-konuş

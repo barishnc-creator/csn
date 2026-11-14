@@ -14,7 +14,7 @@ interface Props {
 }
 
 export default function DmSidebar({ currentId, onSelect, unread, onOpenSettings }: Props) {
-  const { channels, dmPartner, profiles, presence, members, userId, openDm } = useApp()
+  const { channels, dmPartner, profiles, presence, members, userId, openDm, select } = useApp()
   const voice = useVoice()
   const [query, setQuery] = useState('')
   const [picking, setPicking] = useState(false)
@@ -40,6 +40,11 @@ export default function DmSidebar({ currentId, onSelect, unread, onOpenSettings 
       </header>
 
       <div className="channel-scroll">
+        <button className={`dm-item friends-link${currentId === null ? ' active' : ''}`} onClick={() => select(null, 'dm')}>
+          <span className="friends-icon"><Icon name="friends" size={18} /></span>
+          <span className="dm-name">Arkadaşlar</span>
+        </button>
+        <div className="category">Özel mesajlar</div>
         {picking && (
           <div className="dm-picker">
             <input autoFocus placeholder="Kime yazacaksın?" value={query} onChange={(e) => setQuery(e.target.value)} />

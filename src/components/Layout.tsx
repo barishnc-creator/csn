@@ -12,6 +12,7 @@ import VoiceView from './VoiceView'
 import SettingsModal, { type SettingsTab } from './SettingsModal'
 import UserProfileModal from './UserProfileModal'
 import Avatar from './Avatar'
+import FriendsView from './FriendsView'
 import Icon from './Icon'
 
 export default function Layout() {
@@ -145,8 +146,7 @@ export default function Layout() {
           title="Doğrudan mesajlar"
           onClick={() => {
             setMode('dm')
-            const first = dmChannels.find((c) => c.id === selectedId) ?? dmChannels[0]
-            select(first?.id ?? null, 'dm')
+            select(null, 'dm')
           }}
         >
           <Icon name="message" size={22} />
@@ -165,7 +165,7 @@ export default function Layout() {
       {mode === 'dm' ? (
         <DmSidebar currentId={current?.id ?? null} onSelect={selectChannel} unread={unread} onOpenSettings={setSettings} />
       ) : (
-        <ChannelSidebar currentId={current?.id ?? null} onSelect={selectChannel} unread={unread} mentions={mentions} onOpenSettings={setSettings} />
+        <ChannelSidebar currentId={current?.id ?? null} onSelect={selectChannel} unread={unread} mentions={mentions} onOpenSettings={setSettings} onFriends={() => select(null, 'dm')} />
       )}
 
       <main className="main">
@@ -174,11 +174,7 @@ export default function Layout() {
         ) : current ? (
           <ChatView key={current.id} channel={current} onToggleMembers={() => setShowMembers((s) => !s)} />
         ) : mode === 'dm' ? (
-          <div className="empty-state">
-            <Icon name="message" size={48} />
-            <h2>Doğrudan mesajlar</h2>
-            <p className="muted">Bir arkadaşının profiline tıklayıp <strong>Mesaj gönder</strong> diyerek sohbet başlat.</p>
-          </div>
+          <FriendsView />
         ) : (
           <div className="empty-state">Henüz kanal yok. Sunucu ayarlarından kanal ekleyebilirsin.</div>
         )}
