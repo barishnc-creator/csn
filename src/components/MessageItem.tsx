@@ -1,26 +1,32 @@
-import { memo, useEffect, useState, type KeyboardEvent } from 'react'
+import { memo, useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { useApp } from '../lib/store'
 import { formatStamp, formatTime } from '../lib/format'
 import { formatSize, signedUrl } from '../lib/files'
 import { mentionsMe, renderMarkdown } from '../lib/markdown'
-import type { Attachment, Message } from '../lib/types'
+import type { Attachment, Message, Reaction } from '../lib/types'
 import Avatar from './Avatar'
 import Icon from './Icon'
+
+export const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥', '🎉', '👀', '💯', '🙏', '😎', '✅']
 
 interface Props {
   message: Message
   grouped: boolean
   replied: Message | null
+  reactions?: Reaction[]
   editing: boolean
   canDelete: boolean
+  canPin: boolean
   onReply: () => void
   onEdit: () => void
   onEditDone: () => void
+  onJump: (id: number) => void
 }
 
-function MessageItem({ message: m, grouped, replied, editing, canDelete, onReply, onEdit, onEditDone }: Props) {
-  const { profiles, userId, me } = useApp()
+function MessageItem({ message: m, grouped, replied, reactions, editing, canDelete, canPin, onReply, onEdit, onEditDone, onJump }: Props) {
+  const { profiles, userId, me, openProfile, nameColor } = useApp()
+  const [picker, setPicker] = useState(false)
   const author = profiles[m.author_id]
   const names = Object.values(profiles).map((p) => p.display_name)
   const mine = m.author_id === userId
@@ -31,15 +37,35 @@ function MessageItem({ message: m, grouped, replied, editing, canDelete, onReply
     await supabase.from('messages').delete().eq('id', m.id)
   }
 
+  async function togglePin() {
+    const { error } = await supabase.rpc('toggle_pin', { mid: m.id })
+    if (error) alert(error.message)
+  }
+
+  async function react(emoji: string) {
+    setPicker(false)
+    const exists = reactions?.some((r) => r.user_id === userId && r.emoji === emoji)
+    if (exists) await supabase.from('reactions').delete().match({ message_id: m.id, user_id: userId, emoji })
+    else await supabase.from('reactions').insert({ message_id: m.id, emoji })
+  }
+
+  // Tepkileri emoji başına grupla
+  const groups: { emoji: string; users: string[] }[] = []
+  for (const r of reactions ?? []) {
+    const g = groups.find((x) => x.emoji === r.emoji)
+    if (g) g.users.push(r.user_id)
+    else groups.push({ emoji: r.emoji, users: [r.user_id] })
+  }
+
   return (
-    <div className={`message${grouped ? ' grouped' : ''}${highlighted ? ' mentioned' : ''}`}>
-      {replied !== null || m.reply_to ? (
-        <div className="reply-ref">
+    <div className={`message${grouped ? ' grouped' : ''}${highlighted ? ' mentioned' : ''}${m.pinned_at ? ' pinned' : ''}`}>
+      {m.reply_to ? (
+        <div className="reply-ref" onClick={() => m.reply_to && onJump(m.reply_to)}>
           <span className="reply-line" />
           {replied ? (
             <>
               <Avatar profile={profiles[replied.author_id]} userId={replied.author_id} size={16} />
-              <strong>{profiles[replied.author_id]?.display_name ?? 'Üye'}</strong>
+              <strong style={{ color: nameColor(replied.author_id) }}>{profiles[replied.author_id]?.display_name ?? 'Üye'}</strong>
               <span className="reply-snippet">{replied.content || 'Ek dosya'}</span>
             </>
           ) : (
@@ -52,14 +78,19 @@ function MessageItem({ message: m, grouped, replied, editing, canDelete, onReply
           {grouped ? (
             <span className="hover-time">{formatTime(m.created_at)}</span>
           ) : (
-            <Avatar profile={author} userId={m.author_id} size={40} />
+            <button className="avatar-btn" onClick={() => openProfile(m.author_id)}>
+              <Avatar profile={author} userId={m.author_id} size={40} />
+            </button>
           )}
         </div>
         <div className="message-body">
           {!grouped && (
             <div className="message-head">
-              <span className="author">{author?.display_name ?? 'Eski üye'}</span>
+              <button className="author" style={{ color: nameColor(m.author_id) }} onClick={() => openProfile(m.author_id)}>
+                {author?.display_name ?? 'Eski üye'}
+              </button>
               <span className="stamp">{formatStamp(m.created_at)}</span>
+              {m.pinned_at && <span className="pin-tag" title="Sabitlendi"><Icon name="pin" size={12} /></span>}
             </div>
           )}
           {editing ? (
@@ -79,20 +110,71 @@ function MessageItem({ message: m, grouped, replied, editing, canDelete, onReply
               ))}
             </div>
           )}
+          {groups.length > 0 && (
+            <div className="reactions">
+              {groups.map((g) => (
+                <button
+                  key={g.emoji}
+                  className={`reaction${g.users.includes(userId) ? ' mine' : ''}`}
+                  onClick={() => react(g.emoji)}
+                  title={g.users.map((u) => profiles[u]?.display_name ?? 'Üye').join(', ')}
+                >
+                  <span>{g.emoji}</span>
+                  <span className="reaction-count">{g.users.length}</span>
+                </button>
+              ))}
+              <button className="reaction add" onClick={() => setPicker(true)} title="Tepki ekle"><Icon name="smile" size={16} /></button>
+            </div>
+          )}
         </div>
       </div>
       {!editing && (
         <div className="message-actions">
+          {QUICK_EMOJIS.slice(0, 3).map((e) => (
+            <button key={e} className="emoji-quick" onClick={() => react(e)} title={`${e} tepkisi`}>{e}</button>
+          ))}
+          <button onClick={() => setPicker((p) => !p)} title="Tepki ekle"><Icon name="smile" size={18} /></button>
           <button onClick={onReply} title="Yanıtla"><Icon name="reply" size={18} /></button>
+          {canPin && (
+            <button onClick={togglePin} title={m.pinned_at ? 'Sabitlemeyi kaldır' : 'Sabitle'} className={m.pinned_at ? 'on' : ''}>
+              <Icon name="pin" size={18} />
+            </button>
+          )}
           {mine && <button onClick={onEdit} title="Düzenle"><Icon name="edit" size={18} /></button>}
           {canDelete && <button className="danger" onClick={remove} title="Sil"><Icon name="trash" size={18} /></button>}
         </div>
       )}
+      {picker && <EmojiPicker onPick={react} onClose={() => setPicker(false)} />}
     </div>
   )
 }
 
 export default memo(MessageItem)
+
+const MORE_EMOJIS = ['😀', '😁', '🤣', '😊', '😍', '🥰', '😘', '🤔', '🤨', '😐', '🙄', '😏', '😴', '🤯', '🥳', '😭', '😡', '🤬', '💀', '👻', '🤝', '👏', '🙌', '💪', '👋', '✌️', '🤞', '👌', '🫡', '🍕', '⚽', '🎮', '🏆', '⭐', '💔', '💡', '❓', '❗', '🚀', '🍻']
+
+function EmojiPicker({ onPick, onClose }: { onPick: (e: string) => void; onClose: () => void }) {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const down = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
+    }
+    const key = (e: globalThis.KeyboardEvent) => e.key === 'Escape' && onClose()
+    window.addEventListener('mousedown', down)
+    window.addEventListener('keydown', key)
+    return () => {
+      window.removeEventListener('mousedown', down)
+      window.removeEventListener('keydown', key)
+    }
+  }, [onClose])
+  return (
+    <div className="emoji-picker" ref={ref}>
+      {[...QUICK_EMOJIS, ...MORE_EMOJIS].map((e) => (
+        <button key={e} onClick={() => onPick(e)}>{e}</button>
+      ))}
+    </div>
+  )
+}
 
 function EditBox({ message, onDone }: { message: Message; onDone: () => void }) {
   const [text, setText] = useState(message.content)
@@ -131,14 +213,26 @@ function AttachmentView({ a }: { a: Attachment }) {
     }
   }, [a.path])
 
+  useEffect(() => {
+    if (!zoom) return
+    const key = (e: globalThis.KeyboardEvent) => e.key === 'Escape' && setZoom(false)
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+  }, [zoom])
+
   if (a.type.startsWith('image/')) {
     return (
       <>
         {url ? <img className="attach-image" src={url} alt={a.name} onClick={() => setZoom(true)} loading="lazy" /> : <div className="attach-image placeholder" />}
         {zoom && url && (
           <div className="lightbox" onClick={() => setZoom(false)}>
-            <img src={url} alt={a.name} />
-            <a href={url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>Orijinali aç</a>
+            <div className="lightbox-bar" onClick={(e) => e.stopPropagation()}>
+              <button className="btn ghost small" onClick={() => setZoom(false)}><Icon name="back" size={16} /> Geri</button>
+              <span className="lightbox-name">{a.name}</span>
+              <a className="btn ghost small" href={url} target="_blank" rel="noreferrer"><Icon name="download" size={16} /> Orijinali aç</a>
+              <button className="icon-btn" onClick={() => setZoom(false)} title="Kapat (Esc)"><Icon name="x" /></button>
+            </div>
+            <img src={url} alt={a.name} onClick={(e) => e.stopPropagation()} />
           </div>
         )}
       </>

@@ -11,14 +11,15 @@ const TYPING_TTL = 4000
 
 interface Props {
   channel: Channel
+  placeholder: string
   replyTo: Message | null
   onCancelReply: () => void
   onSend: (content: string, attachments: Attachment[]) => Promise<void>
   onEditLast: () => void
 }
 
-export default function Composer({ channel, replyTo, onCancelReply, onSend, onEditLast }: Props) {
-  const { userId, profiles, members } = useApp()
+export default function Composer({ channel, placeholder, replyTo, onCancelReply, onSend, onEditLast }: Props) {
+  const { userId, profiles, members, can } = useApp()
   const [text, setText] = useState('')
   const [files, setFiles] = useState<File[]>([])
   const [busy, setBusy] = useState(false)
@@ -102,7 +103,7 @@ export default function Composer({ channel, replyTo, onCancelReply, onSend, onEd
           .filter((p) => memberIds.has(p.id) && p.display_name.toLocaleLowerCase('tr').includes(mention.query.toLocaleLowerCase('tr')))
           .slice(0, 8)
           .map((p) => ({ id: p.id, name: p.display_name })),
-        ...('herkes'.startsWith(mention.query.toLocaleLowerCase('tr')) ? [{ id: 'herkes', name: 'herkes' }] : []),
+        ...(channel.kind !== 'dm' && can('mention_everyone') && 'herkes'.startsWith(mention.query.toLocaleLowerCase('tr')) ? [{ id: 'herkes', name: 'herkes' }] : []),
       ]
     : []
 
@@ -237,7 +238,7 @@ export default function Composer({ channel, replyTo, onCancelReply, onSend, onEd
           ref={input}
           value={text}
           rows={1}
-          placeholder={`#${channel.name} kanalına mesaj gönder`}
+          placeholder={placeholder}
           onChange={(e) => {
             setText(e.target.value)
             updateMention(e.target.value, e.target.selectionStart)

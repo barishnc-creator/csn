@@ -1,5 +1,5 @@
 export type Role = 'admin' | 'mod' | 'member'
-export type ChannelKind = 'text' | 'voice'
+export type ChannelKind = 'text' | 'voice' | 'dm'
 export type UserStatus = 'online' | 'idle' | 'dnd'
 
 export interface Profile {
@@ -7,6 +7,36 @@ export interface Profile {
   display_name: string
   avatar_path: string | null
   custom_status: string | null
+  bio: string | null
+  pronouns: string | null
+  banner_color: string | null
+}
+
+export type Permission = 'manage_channels' | 'kick_members' | 'create_invites' | 'manage_messages' | 'mention_everyone'
+
+export interface CustomRole {
+  id: string
+  name: string
+  color: string
+  permissions: Permission[]
+  hoist: boolean
+  position: number
+}
+
+export interface MemberRole {
+  user_id: string
+  role_id: string
+}
+
+export interface ChannelMember {
+  channel_id: string
+  user_id: string
+}
+
+export interface Reaction {
+  message_id: number
+  user_id: string
+  emoji: string
 }
 
 export interface Member {
@@ -38,6 +68,7 @@ export interface Channel {
   kind: ChannelKind
   topic: string | null
   position: number
+  allowed_roles: string[] | null
 }
 
 export interface Attachment {
@@ -56,6 +87,8 @@ export interface Message {
   reply_to: number | null
   edited_at: string | null
   created_at: string
+  pinned_at: string | null
+  pinned_by: string | null
 }
 
 export interface Invite {

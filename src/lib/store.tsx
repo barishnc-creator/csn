@@ -1,7 +1,25 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from './supabase'
-import type { Channel, Member, PresenceState, Profile, Role, UserStatus } from './types'
+import type {
+  Channel,
+  ChannelMember,
+  CustomRole,
+  Member,
+  MemberRole,
+  Permission,
+  PresenceState,
+  Profile,
+  Role,
+  UserStatus,
+} from './types'
+
+export type ViewMode = 'server' | 'dm'
+
+export interface ReloadNotice {
+  note: string | null
+  by: string | null
+}
 
 interface AppState {
   userId: string
@@ -11,11 +29,32 @@ interface AppState {
   profiles: Record<string, Profile>
   members: Member[]
   channels: Channel[]
+  roles: CustomRole[]
+  memberRoles: MemberRole[]
+  dmMembers: ChannelMember[]
   presence: Record<string, PresenceState>
   myStatus: UserStatus
   setMyStatus: (s: UserStatus) => void
   updatePresence: (patch: Partial<PresenceState>) => void
   refreshProfiles: () => Promise<void>
+  /** Bu kullanıcının yetkisi var mı (yönetici her şeye sahip) */
+  can: (perm: Permission, uid?: string) => boolean
+  /** Kişinin özel rolleri, sıraya göre */
+  rolesOf: (uid: string) => CustomRole[]
+  /** İsmin rengi: en üstteki renkli rol */
+  nameColor: (uid: string) => string | undefined
+  /** DM kanalındaki diğer kişi */
+  dmPartner: (channelId: string) => string | undefined
+  // Gezinme
+  mode: ViewMode
+  selectedId: string | null
+  select: (channelId: string | null, mode?: ViewMode) => void
+  setMode: (m: ViewMode) => void
+  openDm: (uid: string) => Promise<void>
+  profileOf: string | null
+  openProfile: (uid: string | null) => void
+  reloadNotice: ReloadNotice | null
+  dismissReload: () => void
 }
 
 const Ctx = createContext<AppState | null>(null)
@@ -27,21 +66,41 @@ export function useApp() {
 }
 
 const STATUS_KEY = 'csn.status'
+const LAST_KEY = 'csn.lastChannel'
 const IDLE_MS = 10 * 60 * 1000
+
+function readLS(key: string) {
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+function writeLS(key: string, v: string) {
+  try {
+    localStorage.setItem(key, v)
+  } catch {
+    // yoksay
+  }
+}
+
+const sortChannels = (list: Channel[]) =>
+  [...list].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name, 'tr'))
 
 export function AppProvider({ userId, children }: { userId: string; children: ReactNode }) {
   const [profiles, setProfiles] = useState<Record<string, Profile>>({})
   const [members, setMembers] = useState<Member[]>([])
   const [channels, setChannels] = useState<Channel[]>([])
+  const [roles, setRoles] = useState<CustomRole[]>([])
+  const [memberRoles, setMemberRoles] = useState<MemberRole[]>([])
+  const [dmMembers, setDmMembers] = useState<ChannelMember[]>([])
   const [presence, setPresence] = useState<Record<string, PresenceState>>({})
-  const [myStatus, setMyStatusState] = useState<UserStatus>(() => {
-    try {
-      const s = localStorage.getItem(STATUS_KEY)
-      return s === 'dnd' ? 'dnd' : 'online'
-    } catch {
-      return 'online'
-    }
-  })
+  const [mode, setMode] = useState<ViewMode>('server')
+  const [selectedId, setSelectedId] = useState<string | null>(() => readLS(LAST_KEY))
+  const [profileOf, setProfileOf] = useState<string | null>(null)
+  const [reloadNotice, setReloadNotice] = useState<ReloadNotice | null>(null)
+  const reloadVersion = useRef<number | null>(null)
+  const [myStatus, setMyStatusState] = useState<UserStatus>(() => (readLS(STATUS_KEY) === 'dnd' ? 'dnd' : 'online'))
   const [idle, setIdle] = useState(false)
 
   const presenceRef = useRef<RealtimeChannel | null>(null)
@@ -55,34 +114,55 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
   })
 
   const refreshProfiles = useCallback(async () => {
-    const { data } = await supabase.from('profiles').select('id, display_name, avatar_path, custom_status')
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, display_name, avatar_path, custom_status, bio, pronouns, banner_color')
     if (data) setProfiles(Object.fromEntries(data.map((p) => [p.id, p as Profile])))
+  }, [])
+
+  const refreshChannels = useCallback(async () => {
+    const [c, cm] = await Promise.all([
+      supabase.from('channels').select('id, name, kind, topic, position, allowed_roles'),
+      supabase.from('channel_members').select('channel_id, user_id'),
+    ])
+    if (c.data) setChannels(sortChannels(c.data as Channel[]))
+    if (cm.data) setDmMembers(cm.data as ChannelMember[])
+  }, [])
+
+  const refreshRoles = useCallback(async () => {
+    const [r, mr] = await Promise.all([
+      supabase.from('roles').select('id, name, color, permissions, hoist, position').order('position'),
+      supabase.from('member_roles').select('user_id, role_id'),
+    ])
+    if (r.data) setRoles(r.data as CustomRole[])
+    if (mr.data) setMemberRoles(mr.data as MemberRole[])
   }, [])
 
   // İlk yükleme + canlı güncellemeler
   useEffect(() => {
     let alive = true
     const load = async () => {
-      const [m, c] = await Promise.all([
+      const [m, st] = await Promise.all([
         supabase.from('members').select('user_id, role, is_owner, joined_at'),
-        supabase.from('channels').select('id, name, kind, topic, position').order('position'),
+        supabase.from('server_state').select('reload_version').maybeSingle(),
+        refreshChannels(),
+        refreshRoles(),
+        refreshProfiles(),
       ])
       if (!alive) return
       if (m.data) setMembers(m.data as Member[])
-      if (c.data) setChannels(c.data as Channel[])
-      await refreshProfiles()
+      reloadVersion.current = st.data?.reload_version ?? 0
     }
     load()
 
     const db = supabase
       .channel('csn-db')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'channels' }, (p) => {
-        setChannels((prev) => {
-          if (p.eventType === 'DELETE') return prev.filter((c) => c.id !== (p.old as Channel).id)
-          const row = p.new as Channel
-          const rest = prev.filter((c) => c.id !== row.id)
-          return [...rest, row].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name))
-        })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'channels' }, () => refreshChannels())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'channel_members' }, () => refreshChannels())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'roles' }, () => refreshRoles())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'member_roles' }, () => {
+        refreshRoles()
+        refreshChannels() // gizli kanal erişimi değişmiş olabilir
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'members' }, (p) => {
         if (p.eventType === 'DELETE' && (p.old as Member).user_id === userId) {
@@ -96,10 +176,18 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
           return [...prev.filter((m) => m.user_id !== row.user_id), row]
         })
         if (p.eventType === 'INSERT') refreshProfiles()
+        if (p.eventType === 'UPDATE') refreshChannels()
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (p) => {
         const row = p.new as Profile
         setProfiles((prev) => ({ ...prev, [row.id]: row }))
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'server_state' }, (p) => {
+        const row = p.new as { reload_version: number; reload_note: string | null; reloaded_by: string | null }
+        if (reloadVersion.current !== null && row.reload_version > reloadVersion.current) {
+          reloadVersion.current = row.reload_version
+          setReloadNotice({ note: row.reload_note, by: row.reloaded_by })
+        }
       })
       .subscribe()
 
@@ -107,7 +195,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       alive = false
       supabase.removeChannel(db)
     }
-  }, [refreshProfiles, userId])
+  }, [refreshProfiles, refreshChannels, refreshRoles, userId])
 
   // Presence: kim çevrimiçi, kim hangi ses kanalında
   useEffect(() => {
@@ -163,30 +251,76 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
 
   const setMyStatus = useCallback((s: UserStatus) => {
     setMyStatusState(s)
-    try {
-      localStorage.setItem(STATUS_KEY, s)
-    } catch {
-      // yoksay
-    }
+    writeLS(STATUS_KEY, s)
   }, [])
 
-  const value = useMemo<AppState>(
-    () => ({
+  const select = useCallback((id: string | null, m?: ViewMode) => {
+    setSelectedId(id)
+    if (m) setMode(m)
+    if (id) writeLS(LAST_KEY, id)
+  }, [])
+
+  const openDm = useCallback(
+    async (uid: string) => {
+      const { data, error } = await supabase.rpc('open_dm', { other: uid })
+      if (error || !data) return
+      await refreshChannels()
+      setProfileOf(null)
+      select(data as string, 'dm')
+    },
+    [refreshChannels, select],
+  )
+
+  const value = useMemo<AppState>(() => {
+    const me = members.find((m) => m.user_id === userId)
+    const roleById = new Map(roles.map((r) => [r.id, r]))
+    const rolesOf = (uid: string) =>
+      memberRoles
+        .filter((mr) => mr.user_id === uid)
+        .map((mr) => roleById.get(mr.role_id))
+        .filter((r): r is CustomRole => !!r)
+        .sort((a, b) => a.position - b.position)
+    const can = (perm: Permission, uid = userId) => {
+      const m = members.find((x) => x.user_id === uid)
+      if (!m) return false
+      if (m.role === 'admin') return true
+      if (m.role === 'mod' && ['create_invites', 'manage_messages', 'mention_everyone'].includes(perm)) return true
+      return rolesOf(uid).some((r) => r.permissions.includes(perm))
+    }
+    return {
       userId,
       me: profiles[userId] ?? null,
-      myRole: members.find((m) => m.user_id === userId)?.role ?? 'member',
-      isOwner: members.find((m) => m.user_id === userId)?.is_owner ?? false,
+      myRole: me?.role ?? 'member',
+      isOwner: me?.is_owner ?? false,
       profiles,
       members,
       channels,
+      roles,
+      memberRoles,
+      dmMembers,
       presence,
       myStatus: effectiveStatus,
       setMyStatus,
       updatePresence,
       refreshProfiles,
-    }),
-    [userId, profiles, members, channels, presence, effectiveStatus, setMyStatus, updatePresence, refreshProfiles],
-  )
+      can,
+      rolesOf,
+      nameColor: (uid) => rolesOf(uid).find((r) => r.color && r.color !== '#99aab5')?.color,
+      dmPartner: (cid) => dmMembers.find((d) => d.channel_id === cid && d.user_id !== userId)?.user_id,
+      mode,
+      selectedId,
+      select,
+      setMode,
+      openDm,
+      profileOf,
+      openProfile: setProfileOf,
+      reloadNotice,
+      dismissReload: () => setReloadNotice(null),
+    }
+  }, [
+    userId, profiles, members, channels, roles, memberRoles, dmMembers, presence, effectiveStatus,
+    setMyStatus, updatePresence, refreshProfiles, mode, selectedId, select, openDm, profileOf, reloadNotice,
+  ])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }

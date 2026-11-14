@@ -16,7 +16,6 @@ interface Tile {
 export default function VoiceView({ channel, onToggleMembers }: { channel: Channel; onToggleMembers: () => void }) {
   const voice = useVoice()
   const { presence, profiles } = useApp()
-  const [focus, setFocus] = useState<string | null>(null)
   const inThis = voice.channelId === channel.id
 
   if (!inThis) {
@@ -41,6 +40,18 @@ export default function VoiceView({ channel, onToggleMembers }: { channel: Chann
     )
   }
 
+  return (
+    <div className="voice-view">
+      <VoiceHeader channel={channel} onToggleMembers={onToggleMembers} />
+      <CallStage />
+    </div>
+  )
+}
+
+/** Ses/görüntü sahnesi + kontroller (ses kanalında ve DM aramasında ortak) */
+export function CallStage({ compact }: { compact?: boolean }) {
+  const voice = useVoice()
+  const [focus, setFocus] = useState<string | null>(null)
   const tiles: Tile[] = []
   for (const p of voice.participants) {
     if (p.screen) tiles.push({ key: `${p.id}-screen`, participant: p, kind: 'screen', track: p.screen })
@@ -54,8 +65,7 @@ export default function VoiceView({ channel, onToggleMembers }: { channel: Chann
   const rest = focused ? tiles.filter((t) => t !== focused) : tiles
 
   return (
-    <div className="voice-view">
-      <VoiceHeader channel={channel} onToggleMembers={onToggleMembers} />
+    <div className={`call-stage${compact ? ' compact' : ''}`}>
       <div className={`voice-stage${focused ? ' has-focus' : ''}`}>
         {focused && (
           <div className="focus-area">

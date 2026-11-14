@@ -16,15 +16,15 @@ interface Props {
 }
 
 export default function ChannelSidebar({ currentId, onSelect, unread, mentions, onOpenSettings }: Props) {
-  const { channels, presence, profiles, myRole, userId } = useApp()
+  const { channels, presence, profiles, myRole, userId, isOwner, can, openProfile } = useApp()
   const voice = useVoice()
   const [menu, setMenu] = useState(false)
   const [volumeFor, setVolumeFor] = useState<{ id: string; x: number; y: number } | null>(null)
 
+  const [reloadOpen, setReloadOpen] = useState(false)
   const text = channels.filter((c) => c.kind === 'text')
   const voiceChannels = channels.filter((c) => c.kind === 'voice')
   const speaking = new Set(voice.participants.filter((p) => p.speaking).map((p) => p.id))
-  const isMod = myRole === 'admin' || myRole === 'mod'
 
   return (
     <aside className="sidebar">
@@ -34,12 +34,17 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
       </header>
       {menu && (
         <div className="dropdown" onMouseLeave={() => setMenu(false)}>
-          {isMod && (
+          {isOwner && (
+            <button className="accent" onClick={() => { setMenu(false); setReloadOpen(true) }}>
+              <Icon name="refresh" size={16} /> Herkesi yenile
+            </button>
+          )}
+          {can('create_invites') && (
             <button onClick={() => { setMenu(false); onOpenSettings('invites') }}>
               <Icon name="users" size={16} /> Arkadaş davet et
             </button>
           )}
-          {myRole === 'admin' && (
+          {can('manage_channels') && (
             <button onClick={() => { setMenu(false); onOpenSettings('channels') }}>
               <Icon name="plusCircle" size={16} /> Kanalları yönet
             </button>
@@ -50,8 +55,13 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
             </button>
           )}
           {myRole === 'admin' && (
+            <button onClick={() => { setMenu(false); onOpenSettings('roles') }}>
+              <Icon name="shield" size={16} /> Roller
+            </button>
+          )}
+          {myRole === 'admin' && (
             <button onClick={() => { setMenu(false); onOpenSettings('members') }}>
-              <Icon name="gear" size={16} /> Üyeler ve roller
+              <Icon name="users" size={16} /> Üyeler
             </button>
           )}
           <button onClick={() => { setMenu(false); onOpenSettings('profile') }}>
@@ -76,6 +86,7 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
             >
               <Icon name="hash" size={18} className="channel-icon" />
               <span className="channel-name">{c.name}</span>
+              {c.allowed_roles?.length ? <Icon name="lock" size={13} className="channel-lock" /> : null}
               {m > 0 && <span className="badge">{m}</span>}
             </button>
           )
@@ -92,12 +103,14 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
               >
                 <Icon name="speaker" size={18} className="channel-icon" />
                 <span className="channel-name">{c.name}</span>
+                {c.allowed_roles?.length ? <Icon name="lock" size={13} className="channel-lock" /> : null}
                 {voice.connecting && voice.channelId !== c.id && currentId === c.id && <span className="mini-spinner" />}
               </button>
               {inside.map((p) => (
                 <div
                   key={p.user_id}
                   className="voice-user"
+                  onClick={() => openProfile(p.user_id)}
                   onContextMenu={(e) => {
                     if (p.user_id === userId || voice.channelId !== c.id) return
                     e.preventDefault()
@@ -123,6 +136,7 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
       {voice.channelId && <VoiceBar />}
       <UserPanel onOpenSettings={onOpenSettings} />
 
+      {reloadOpen && <ReloadDialog onClose={() => setReloadOpen(false)} />}
       {volumeFor && (
         <VolumePopover userId={volumeFor.id} x={volumeFor.x} y={volumeFor.y} onClose={() => setVolumeFor(null)} />
       )}
@@ -130,10 +144,44 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
   )
 }
 
-function VoiceBar() {
+function ReloadDialog({ onClose }: { onClose: () => void }) {
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  async function send() {
+    setBusy(true)
+    const { error } = await supabase.rpc('broadcast_reload', { note: note.trim() || null })
+    setBusy(false)
+    if (error) setError(error.message)
+    else onClose()
+  }
+  return (
+    <div className="modal-backdrop dim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="dialog">
+        <div className="dialog-head">
+          <h3>Herkesi yenile</h3>
+          <button className="icon-btn" onClick={onClose} title="Kapat"><Icon name="x" /></button>
+        </div>
+        <p className="muted">CSN'yi açık tutan herkesin ekranı 5 saniye içinde yenilenir ve yeni sürüm yüklenir. Sesli sohbette olanların bağlantısı koparılmaz; onlara bir uyarı gösterilir.</p>
+        <label>
+          Kısa not (isteğe bağlı)
+          <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} placeholder="ör. Emoji tepkileri geldi!" autoFocus />
+        </label>
+        {error && <div className="form-error">{error}</div>}
+        <div className="dialog-actions">
+          <button className="btn ghost" onClick={onClose}>Vazgeç</button>
+          <button className="btn primary" onClick={send} disabled={busy}><Icon name="refresh" size={16} /> Yenile</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function VoiceBar() {
   const voice = useVoice()
-  const { channels } = useApp()
+  const { channels, dmPartner, profiles } = useApp()
   const ch = channels.find((c) => c.id === voice.channelId)
+  const label = ch?.kind === 'dm' ? `@${profiles[dmPartner(ch.id) ?? '']?.display_name ?? 'Görüşme'}` : ch?.name ?? ''
   return (
     <div className="voice-bar">
       <div className="voice-bar-top">
@@ -141,7 +189,7 @@ function VoiceBar() {
           <div className="voice-bar-status">
             <Icon name="live" size={16} /> Ses bağlandı
           </div>
-          <div className="voice-bar-channel">{ch?.name ?? ''}</div>
+          <div className="voice-bar-channel">{label}</div>
         </div>
         <button className="icon-btn" title="Bağlantıyı kes" onClick={voice.leave}>
           <Icon name="phoneOff" />
@@ -159,8 +207,8 @@ function VoiceBar() {
   )
 }
 
-function UserPanel({ onOpenSettings }: { onOpenSettings: (tab: SettingsTab) => void }) {
-  const { me, userId, myStatus, setMyStatus } = useApp()
+export function UserPanel({ onOpenSettings }: { onOpenSettings: (tab: SettingsTab) => void }) {
+  const { me, userId, myStatus, setMyStatus, openProfile } = useApp()
   const voice = useVoice()
   const [statusMenu, setStatusMenu] = useState(false)
   const labels = { online: 'Çevrimiçi', idle: 'Boşta', dnd: 'Rahatsız etmeyin' } as const
@@ -176,6 +224,10 @@ function UserPanel({ onOpenSettings }: { onOpenSettings: (tab: SettingsTab) => v
       </button>
       {statusMenu && (
         <div className="dropdown status-menu" onMouseLeave={() => setStatusMenu(false)}>
+          <button onClick={() => { openProfile(userId); setStatusMenu(false) }}>
+            <Icon name="users" size={16} /> Profilimi görüntüle
+          </button>
+          <div className="dropdown-sep" />
           <button onClick={() => { setMyStatus('online'); setStatusMenu(false) }}>
             <span className="status-dot static online" /> Çevrimiçi
           </button>

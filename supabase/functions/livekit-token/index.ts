@@ -1,5 +1,5 @@
 // LiveKit erişim anahtarı üretir.
-// Yalnız CSN üyesi olan, giriş yapmış kullanıcılar ve yalnız ses kanalları için.
+// Yalnız CSN üyesi olan, giriş yapmış kullanıcılar; ses kanalları ve DM aramaları için.
 //
 // Gerekli gizli değerler (Supabase → Edge Functions → Secrets):
 //   LIVEKIT_URL         wss://<proje>.livekit.cloud
@@ -68,11 +68,22 @@ Deno.serve(async (req) => {
 
   const [{ data: member }, { data: channel }, { data: profile }] = await Promise.all([
     admin.from('members').select('role').eq('user_id', user.id).maybeSingle(),
-    admin.from('channels').select('id, kind').eq('id', channelId).maybeSingle(),
+    admin.from('channels').select('id, kind, allowed_roles').eq('id', channelId).maybeSingle(),
     admin.from('profiles').select('display_name').eq('id', user.id).maybeSingle(),
   ])
   if (!member) return json({ error: 'CSN üyesi değilsin' }, 403)
-  if (!channel || channel.kind !== 'voice') return json({ error: 'Ses kanalı bulunamadı' }, 404)
+  if (!channel || (channel.kind !== 'voice' && channel.kind !== 'dm')) return json({ error: 'Ses kanalı bulunamadı' }, 404)
+  if (channel.kind === 'dm') {
+    // Doğrudan mesaj araması: yalnız o konuşmanın katılımcıları
+    const { data: cm } = await admin
+      .from('channel_members').select('user_id').eq('channel_id', channel.id).eq('user_id', user.id).maybeSingle()
+    if (!cm) return json({ error: 'Bu görüşmeye katılamazsın' }, 403)
+  } else if (member.role !== 'admin' && channel.allowed_roles?.length) {
+    // Gizli ses kanalı: yalnız izinli rollerdeki üyeler
+    const { data: mr } = await admin
+      .from('member_roles').select('role_id').eq('user_id', user.id).in('role_id', channel.allowed_roles)
+    if (!mr?.length) return json({ error: 'Bu kanala girme iznin yok' }, 403)
+  }
 
   const now = Math.floor(Date.now() / 1000)
   const token = await new SignJWT({
