@@ -14,7 +14,7 @@ interface Props {
 }
 
 export default function DmSidebar({ currentId, onSelect, unread, onOpenSettings }: Props) {
-  const { channels, dmPartner, profiles, presence, members, userId, openDm, select, friendships } = useApp()
+  const { channels, dmPartner, profiles, presence, members, userId, openDm, select, friendships, openUserMenu } = useApp()
   const incomingCount = friendships.filter((f) => f.status === 'pending' && f.addressee === userId).length
   const voice = useVoice()
   const [query, setQuery] = useState('')
@@ -69,7 +69,7 @@ export default function DmSidebar({ currentId, onSelect, unread, onOpenSettings 
             const n = unread[c.id] ?? 0
             const inCall = Object.values(presence).some((x) => x.voice_channel_id === c.id)
             return (
-              <button key={c.id} className={`dm-item${c.id === currentId ? ' active' : ''}${n ? ' unread' : ''}`} onClick={() => onSelect(c.id)}>
+              <button key={c.id} className={`dm-item${c.id === currentId ? ' active' : ''}${n ? ' unread' : ''}`} onClick={() => onSelect(c.id)} onContextMenu={(e) => { e.preventDefault(); openUserMenu(uid, e.clientX, e.clientY) }}>
                 <Avatar profile={p} userId={uid} size={32} status={presence[uid]?.status ?? 'offline'} />
                 <div className="dm-text">
                   <span className="dm-name">{p?.display_name ?? 'Üye'}</span>

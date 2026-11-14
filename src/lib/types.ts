@@ -10,6 +10,8 @@ export interface Profile {
   bio: string | null
   pronouns: string | null
   banner_color: string | null
+  banner_path: string | null
+  tag: number
 }
 
 export type Permission = 'manage_channels' | 'kick_members' | 'create_invites' | 'manage_messages' | 'mention_everyone'

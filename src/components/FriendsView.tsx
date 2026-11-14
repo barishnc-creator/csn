@@ -3,6 +3,7 @@ import { useApp } from '../lib/store'
 import { acceptFriend, removeFriendship, sendFriendRequest } from '../lib/friends'
 import Avatar from './Avatar'
 import Icon from './Icon'
+import { formatTag } from '../lib/format'
 
 type Tab = 'online' | 'all' | 'pending' | 'add'
 const statusText = { online: 'Çevrimiçi', idle: 'Boşta', dnd: 'Rahatsız etmeyin' } as const
@@ -19,7 +20,7 @@ export default function FriendsView() {
   const incoming = friendships.filter((f) => f.status === 'pending' && f.addressee === userId)
   const outgoing = friendships.filter((f) => f.status === 'pending' && f.requester === userId)
   const name = (id: string) => profiles[id]?.display_name ?? 'Üye'
-  const match = (id: string) => name(id).toLocaleLowerCase('tr').includes(q.toLocaleLowerCase('tr'))
+  const match = (id: string) => `${name(id)}${formatTag(profiles[id]?.tag)}`.toLocaleLowerCase('tr').includes(q.toLocaleLowerCase('tr').trim())
   const byName = (a: string, b: string) => name(a).localeCompare(name(b), 'tr')
 
   async function run(fn: () => Promise<void>) {
@@ -60,7 +61,7 @@ export default function FriendsView() {
       </header>
 
       <div className="friends-body">
-        <input className="search-input" placeholder={tab === 'add' ? 'Üye adı yaz…' : 'Ara…'} value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className="search-input" placeholder={tab === 'add' ? 'Üye adı ya da #etiket yaz…' : 'Ara…'} value={q} onChange={(e) => setQ(e.target.value)} />
         {error && <div className="form-error">{error}</div>}
 
         {(tab === 'online' || tab === 'all') && (
@@ -116,7 +117,7 @@ export default function FriendsView() {
             {candidates.map((id) => {
               const st = friendState(id)
               return (
-                <Row key={id} id={id} sub={statusLine(id)} onOpen={() => openProfile(id)} color={nameColor(id)} status={presence[id]?.status}>
+                <Row key={id} id={id} sub={`${formatTag(profiles[id]?.tag)} · ${statusLine(id)}`} onOpen={() => openProfile(id)} color={nameColor(id)} status={presence[id]?.status}>
                   <FriendButton state={st.state} onSend={() => run(() => sendFriendRequest(id))} onAccept={() => st.id && run(() => acceptFriend(st.id!))} />
                 </Row>
               )
@@ -136,9 +137,9 @@ export function FriendButton({ state, onSend, onAccept }: { state: 'none' | 'fri
 }
 
 function Row({ id, sub, onOpen, color, status, children }: { id: string; sub: string; onOpen: () => void; color?: string; status?: 'online' | 'idle' | 'dnd'; children: React.ReactNode }) {
-  const { profiles } = useApp()
+  const { profiles, openUserMenu } = useApp()
   return (
-    <div className="friend-row" onClick={onOpen}>
+    <div className="friend-row" onClick={onOpen} onContextMenu={(e) => { e.preventDefault(); openUserMenu(id, e.clientX, e.clientY) }}>
       <Avatar profile={profiles[id]} userId={id} size={40} status={status ?? 'offline'} />
       <div className="friend-text">
         <div className="friend-name" style={{ color }}>{profiles[id]?.display_name ?? 'Üye'}</div>

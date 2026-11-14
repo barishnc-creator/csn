@@ -3,6 +3,7 @@ import { Room } from 'livekit-client'
 import { supabase } from '../lib/supabase'
 import { useApp } from '../lib/store'
 import { uploadFile } from '../lib/files'
+import { formatTag } from '../lib/format'
 import type { Channel, ChannelKind, CustomRole, Invite, Permission, Role } from '../lib/types'
 import { useVoice } from '../voice/VoiceContext'
 import Avatar from './Avatar'
@@ -111,6 +112,24 @@ function ProfileTab() {
   const [banner, setBanner] = useState(me?.banner_color ?? '')
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const coverRef = useRef<HTMLInputElement>(null)
+
+  async function changeCover(file: File | null) {
+    try {
+      let path: string | null = null
+      if (file) {
+        if (!file.type.startsWith('image/')) return setMsg({ ok: false, text: 'Lütfen bir resim seç' })
+        if (file.size > 8 * 1024 * 1024) return setMsg({ ok: false, text: 'Kapak en fazla 8 MB olabilir' })
+        path = await uploadFile(userId, file)
+      }
+      const { error } = await supabase.from('profiles').update({ banner_path: path }).eq('id', userId)
+      if (error) throw error
+      refreshProfiles()
+      setMsg({ ok: true, text: file ? 'Kapak fotoğrafı güncellendi' : 'Kapak fotoğrafı kaldırıldı' })
+    } catch (e) {
+      setMsg({ ok: false, text: (e as Error).message })
+    }
+  }
 
   const dirty =
     name !== (me?.display_name ?? '') ||
@@ -172,7 +191,19 @@ function ProfileTab() {
             </div>
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && changeAvatar(e.target.files[0])} />
           </div>
+          <div className="avatar-row cover-row">
+            <div className="cover-thumb"><Icon name="sparkles" size={20} /></div>
+            <div>
+              <div className="row">
+                <button className="btn" onClick={() => coverRef.current?.click()}><Icon name="plus" size={16} /> Kapak fotoğrafı yükle</button>
+                {me?.banner_path && <button className="btn ghost danger-text" onClick={() => changeCover(null)}>Kaldır</button>}
+              </div>
+              <div className="muted small">Önerilen 1200×400, en fazla 8 MB. Yoksa aşağıdaki kapak rengi kullanılır.</div>
+            </div>
+            <input ref={coverRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) changeCover(f) }} />
+          </div>
         </div>
+        {me?.tag ? <div className="muted small">Etiketin: <strong>{me.display_name}{formatTag(me.tag)}</strong> · Arkadaşların seni bu etiketle bulabilir.</div> : null}
         <label>
           Görünen ad
           <input value={name} onChange={(e) => setName(e.target.value)} maxLength={32} />
@@ -707,7 +738,7 @@ function RoleEditor({ role, onDeleted, onError }: { role: CustomRole; onDeleted:
 // ───────── Üyeler ─────────
 
 function MembersTab() {
-  const { members, profiles, userId, roles, rolesOf, myRole, can, openProfile } = useApp()
+  const { members, profiles, userId, roles, rolesOf, myRole, can, openProfile, openUserMenu } = useApp()
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [adding, setAdding] = useState<string | null>(null)
@@ -753,7 +784,7 @@ function MembersTab() {
           const canKick = m.user_id !== userId && !m.is_owner && (isAdmin || (can('kick_members') && m.role === 'member'))
           return (
             <div key={m.user_id} className="member-row">
-              <button className="member-row-id" onClick={() => openProfile(m.user_id)}>
+              <button className="member-row-id" onClick={() => openProfile(m.user_id)} onContextMenu={(e) => { e.preventDefault(); openUserMenu(m.user_id, e.clientX, e.clientY) }}>
                 <Avatar profile={profiles[m.user_id]} userId={m.user_id} size={36} />
                 <div>
                   <div className="member-row-name">
@@ -761,7 +792,7 @@ function MembersTab() {
                     {m.user_id === userId && <span className="muted"> (sen)</span>}
                     {m.is_owner && <span className="owner-tag"><Icon name="crown" size={10} /> SAHİP</span>}
                   </div>
-                  <div className="muted small">Katılma: {new Date(m.joined_at).toLocaleDateString('tr-TR')}</div>
+                  <div className="muted small">{formatTag(profiles[m.user_id]?.tag)} · Katılma: {new Date(m.joined_at).toLocaleDateString('tr-TR')}</div>
                 </div>
               </button>
               <div className="member-row-roles">

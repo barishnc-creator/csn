@@ -6,7 +6,7 @@ import Icon from './Icon'
 const baseLabel = { admin: 'Yöneticiler', mod: 'Moderatörler', member: 'Çevrimiçi' } as const
 
 export default function MemberList() {
-  const { members, profiles, presence, roles, rolesOf, nameColor, openProfile } = useApp()
+  const { members, profiles, presence, roles, rolesOf, nameColor, openProfile, openUserMenu } = useApp()
   const name = (id: string) => profiles[id]?.display_name ?? ''
   const byName = (a: Member, b: Member) => name(a.user_id).localeCompare(name(b.user_id), 'tr')
 
@@ -40,7 +40,7 @@ export default function MemberList() {
           {g.list.sort(byName).map((m) => {
             const p = presence[m.user_id]
             return (
-              <button key={m.user_id} className="member" onClick={() => openProfile(m.user_id)}>
+              <button key={m.user_id} className="member" onClick={() => openProfile(m.user_id)} onContextMenu={(e) => { e.preventDefault(); openUserMenu(m.user_id, e.clientX, e.clientY) }}>
                 <Avatar profile={profiles[m.user_id]} userId={m.user_id} size={32} status={p.status} />
                 <div className="member-text">
                   <div className="member-name" style={{ color: nameColor(m.user_id) }}>
@@ -64,7 +64,7 @@ export default function MemberList() {
         <section>
           <div className="category">Çevrimdışı — {offline.length}</div>
           {offline.map((m) => (
-            <button key={m.user_id} className="member offline" onClick={() => openProfile(m.user_id)}>
+            <button key={m.user_id} className="member offline" onClick={() => openProfile(m.user_id)} onContextMenu={(e) => { e.preventDefault(); openUserMenu(m.user_id, e.clientX, e.clientY) }}>
               <Avatar profile={profiles[m.user_id]} userId={m.user_id} size={32} status="offline" />
               <div className="member-text">
                 <div className="member-name">{name(m.user_id) || 'Üye'}</div>

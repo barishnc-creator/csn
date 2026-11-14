@@ -4,7 +4,6 @@ import { supabase } from '../lib/supabase'
 import { useVoice } from '../voice/VoiceContext'
 import Avatar from './Avatar'
 import Icon from './Icon'
-import VolumePopover from './VolumePopover'
 import type { SettingsTab } from './SettingsModal'
 
 interface Props {
@@ -17,10 +16,9 @@ interface Props {
 }
 
 export default function ChannelSidebar({ currentId, onSelect, unread, mentions, onOpenSettings, onFriends }: Props) {
-  const { channels, presence, profiles, myRole, userId, isOwner, can, openProfile } = useApp()
+  const { channels, presence, profiles, myRole, isOwner, can, openProfile, openUserMenu } = useApp()
   const voice = useVoice()
   const [menu, setMenu] = useState(false)
-  const [volumeFor, setVolumeFor] = useState<{ id: string; x: number; y: number } | null>(null)
 
   const [reloadOpen, setReloadOpen] = useState(false)
   const text = channels.filter((c) => c.kind === 'text')
@@ -125,12 +123,7 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
                   key={p.user_id}
                   className="voice-user"
                   onClick={() => openProfile(p.user_id)}
-                  onContextMenu={(e) => {
-                    if (p.user_id === userId || voice.channelId !== c.id) return
-                    e.preventDefault()
-                    setVolumeFor({ id: p.user_id, x: e.clientX, y: e.clientY })
-                  }}
-                  title={p.user_id !== userId && voice.channelId === c.id ? 'Sağ tık: ses seviyesi' : undefined}
+                  onContextMenu={(e) => { e.preventDefault(); openUserMenu(p.user_id, e.clientX, e.clientY) }}
                 >
                   <Avatar profile={profiles[p.user_id]} userId={p.user_id} size={22} speaking={speaking.has(p.user_id)} />
                   <span className="voice-user-name">{profiles[p.user_id]?.display_name ?? 'Üye'}</span>
@@ -151,9 +144,6 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
       <UserPanel onOpenSettings={onOpenSettings} />
 
       {reloadOpen && <ReloadDialog onClose={() => setReloadOpen(false)} />}
-      {volumeFor && (
-        <VolumePopover userId={volumeFor.id} x={volumeFor.x} y={volumeFor.y} onClose={() => setVolumeFor(null)} />
-      )}
     </aside>
   )
 }

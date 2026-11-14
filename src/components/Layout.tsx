@@ -14,6 +14,7 @@ import SettingsModal, { type SettingsTab } from './SettingsModal'
 import UserProfileModal from './UserProfileModal'
 import Avatar from './Avatar'
 import FriendsView from './FriendsView'
+import UserContextMenu from './UserContextMenu'
 import Icon from './Icon'
 
 export default function Layout() {
@@ -187,6 +188,7 @@ export default function Layout() {
       {settings && <SettingsModal initialTab={settings} onClose={() => setSettings(null)} />}
       {profileOf && <UserProfileModal userId={profileOf} onClose={() => openProfile(null)} onEditProfile={() => { openProfile(null); setSettings('profile') }} />}
 
+      <UserContextMenu />
       {showCall && incoming && callerId && (
         <div className="call-toast">
           <Avatar profile={profiles[callerId]} userId={callerId} size={48} speaking />

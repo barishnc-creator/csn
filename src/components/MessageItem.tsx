@@ -25,7 +25,7 @@ interface Props {
 }
 
 function MessageItem({ message: m, grouped, replied, reactions, editing, canDelete, canPin, onReply, onEdit, onEditDone, onJump }: Props) {
-  const { profiles, userId, me, openProfile, nameColor } = useApp()
+  const { profiles, userId, me, openProfile, nameColor, openUserMenu } = useApp()
   const [picker, setPicker] = useState(false)
   const author = profiles[m.author_id]
   const names = Object.values(profiles).map((p) => p.display_name)
@@ -78,7 +78,7 @@ function MessageItem({ message: m, grouped, replied, reactions, editing, canDele
           {grouped ? (
             <span className="hover-time">{formatTime(m.created_at)}</span>
           ) : (
-            <button className="avatar-btn" onClick={() => openProfile(m.author_id)}>
+            <button className="avatar-btn" onClick={() => openProfile(m.author_id)} onContextMenu={(e) => { e.preventDefault(); openUserMenu(m.author_id, e.clientX, e.clientY) }}>
               <Avatar profile={author} userId={m.author_id} size={40} />
             </button>
           )}
@@ -86,7 +86,7 @@ function MessageItem({ message: m, grouped, replied, reactions, editing, canDele
         <div className="message-body">
           {!grouped && (
             <div className="message-head">
-              <button className="author" style={{ color: nameColor(m.author_id) }} onClick={() => openProfile(m.author_id)}>
+              <button className="author" style={{ color: nameColor(m.author_id) }} onClick={() => openProfile(m.author_id)} onContextMenu={(e) => { e.preventDefault(); openUserMenu(m.author_id, e.clientX, e.clientY) }}>
                 {author?.display_name ?? 'Eski üye'}
               </button>
               <span className="stamp">{formatStamp(m.created_at)}</span>

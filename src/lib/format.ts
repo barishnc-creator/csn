@@ -32,3 +32,8 @@ export function colorFor(id: string) {
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0
   return `hsl(${h % 360} 55% 45%)`
 }
+
+/** 4 haneli isim etiketi: 7 → #0007 */
+export function formatTag(n: number | undefined | null) {
+  return n ? `#${String(n).padStart(4, '0')}` : ''
+}

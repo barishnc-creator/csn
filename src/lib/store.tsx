@@ -59,6 +59,8 @@ interface AppState {
   setMode: (m: ViewMode) => void
   openDm: (uid: string) => Promise<void>
   profileOf: string | null
+  userMenu: { uid: string; x: number; y: number } | null
+  openUserMenu: (uid: string | null, x?: number, y?: number) => void
   openProfile: (uid: string | null) => void
   reloadNotice: ReloadNotice | null
   dismissReload: () => void
@@ -106,6 +108,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
   const [mode, setMode] = useState<ViewMode>('server')
   const [selectedId, setSelectedId] = useState<string | null>(() => readLS(LAST_KEY))
   const [profileOf, setProfileOf] = useState<string | null>(null)
+  const [userMenu, setUserMenu] = useState<{ uid: string; x: number; y: number } | null>(null)
   const [reloadNotice, setReloadNotice] = useState<ReloadNotice | null>(null)
   const reloadVersion = useRef<number | null>(null)
   const [myStatus, setMyStatusState] = useState<UserStatus>(() => (readLS(STATUS_KEY) === 'dnd' ? 'dnd' : 'online'))
@@ -124,7 +127,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
   const refreshProfiles = useCallback(async () => {
     const { data } = await supabase
       .from('profiles')
-      .select('id, display_name, avatar_path, custom_status, bio, pronouns, banner_color')
+      .select('id, display_name, avatar_path, custom_status, bio, pronouns, banner_color, banner_path, tag')
     if (data) setProfiles(Object.fromEntries(data.map((p) => [p.id, p as Profile])))
   }, [])
 
@@ -357,12 +360,14 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       openDm,
       profileOf,
       openProfile: setProfileOf,
+      userMenu,
+      openUserMenu: (uid, x = 0, y = 0) => setUserMenu(uid ? { uid, x, y } : null),
       reloadNotice,
       dismissReload: () => setReloadNotice(null),
     }
   }, [
     userId, profiles, members, channels, roles, memberRoles, dmMembers, friendships, presence, effectiveStatus,
-    setMyStatus, updatePresence, refreshProfiles, mode, selectedId, select, openDm, profileOf, reloadNotice,
+    setMyStatus, updatePresence, refreshProfiles, mode, selectedId, select, openDm, profileOf, userMenu, reloadNotice,
   ])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

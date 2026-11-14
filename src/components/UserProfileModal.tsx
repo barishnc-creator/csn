@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
+import { signedUrl } from '../lib/files'
 import { useApp } from '../lib/store'
 import type { Profile, Role } from '../lib/types'
-import { colorFor } from '../lib/format'
+import { colorFor, formatTag } from '../lib/format'
 import Avatar from './Avatar'
 import Icon from './Icon'
 import { FriendButton } from './FriendsView'
@@ -107,14 +108,30 @@ export function ProfileCard({
   footer?: React.ReactNode
 }) {
   const banner = profile?.banner_color ?? colorFor(userId)
+  const [bannerUrl, setBannerUrl] = useState<string | null>(null)
+  const bannerPath = profile?.banner_path
+  useEffect(() => {
+    let alive = true
+    if (!bannerPath) setBannerUrl(null)
+    else signedUrl(bannerPath).then((u) => alive && setBannerUrl(u))
+    return () => {
+      alive = false
+    }
+  }, [bannerPath])
   return (
     <div className="profile-card-v2">
-      <div className="profile-banner" style={{ background: `linear-gradient(135deg, ${banner}, color-mix(in srgb, ${banner} 55%, #000))` }} />
+      <div
+        className={`profile-banner${bannerUrl ? ' has-image' : ''}`}
+        style={bannerUrl ? { backgroundImage: `url("${bannerUrl}")` } : { background: `linear-gradient(135deg, ${banner}, color-mix(in srgb, ${banner} 55%, #000))` }}
+      />
       <div className="profile-avatar-wrap">
         <Avatar profile={profile} userId={userId} size={88} status={status} />
       </div>
       <div className="profile-inner">
-        <div className="profile-name">{profile?.display_name ?? 'Üye'}</div>
+        <div className="profile-name">
+          {profile?.display_name ?? 'Üye'}
+          {profile?.tag ? <span className="profile-tag">{formatTag(profile.tag)}</span> : null}
+        </div>
         {profile?.pronouns && <div className="profile-pronouns">{profile.pronouns}</div>}
         {profile?.custom_status && <div className="profile-custom">💬 {profile.custom_status}</div>}
         {profile?.bio && (
