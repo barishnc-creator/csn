@@ -28,13 +28,15 @@ CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'
 | Ayarlar panelinde Geri/Kapat, Arkadaşlar sayfası, sol altta çıkış | ✅ |
 | Otomatik yeni sürüm denetimi (`version.json`) + önbelleği atlatan yenileme | ✅ |
 | Revize #2: arkadaşlık istekleri (gönder / kabul / reddet / geri çek / çıkar), `0007` | ✅ SQL ile test edildi |
-| Uygulama içi ekran paylaşımı seçici + Electron masaüstü uygulaması (`desktop/`) | ⏳ alt ajan çalışıyor |
+| Uygulama içi ekran paylaşımı seçici (`src/voice/ScreenSharePicker.tsx`) | ✅ derleniyor, **canlı denenmedi** |
+| Electron masaüstü uygulaması (`desktop/`), kurulum: Actions → "Masaüstü (Windows)" ya da `desktop-v*` etiketi | ✅ ilk derleme tetiklendi |
 
 ## Migrationlar (sırayla uygulandı)
 `0001_init` → `0002_lock_anon_functions` → `0003_owner_and_revisions` → `0004_dm_kind` → `0005_roles_dm_reactions_pins_profile` → `0006_server_reload` → `0007_friendships`
 
 ## Sıradaki adaylar
-1. Windows masaüstü uygulaması (Tauri): oyun içindeyken de çalışan bas-konuş, sistem tepsisi
+1. Masaüstü: oyun içindeyken de çalışan bas-konuş (globalShortcut), sistem tepsisi, uygulama simgesi (`desktop/build/icon.ico`), otomatik güncelleme
+   - Bilinen sınır: masaüstünde sistem sesi paylaşılınca CSN'nin kendi sesi de gider (yankı)
 2. Kod bölme: ana JS paketi ~1,1 MB (LiveKit ve RNNoise yalnız sese girince yüklensin)
 3. Bildirim ayarları (kanal sessize alma), okunmamışların sunucuda saklanması
 4. Grup DM'leri
