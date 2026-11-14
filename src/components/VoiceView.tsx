@@ -52,6 +52,7 @@ export default function VoiceView({ channel, onToggleMembers }: { channel: Chann
 export function CallStage({ compact }: { compact?: boolean }) {
   const voice = useVoice()
   const [focus, setFocus] = useState<string | null>(null)
+  const [theater, setTheater] = useState(false)
   const tiles: Tile[] = []
   for (const p of voice.participants) {
     if (p.screen) tiles.push({ key: `${p.id}-screen`, participant: p, kind: 'screen', track: p.screen })
@@ -63,18 +64,40 @@ export function CallStage({ compact }: { compact?: boolean }) {
   }
   const focused = tiles.find((t) => t.key === focus) ?? null
   const rest = focused ? tiles.filter((t) => t !== focused) : tiles
+  const isTheater = theater && !!focused
+
+  // Yayın bitince ya da kutu kaybolunca tam pencereden çık; Esc ile de çıkılır
+  useEffect(() => {
+    if (!isTheater) return
+    const key = (e: KeyboardEvent) => e.key === 'Escape' && setTheater(false)
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+  }, [isTheater])
+
+  function openTheater(key: string) {
+    setFocus(key)
+    setTheater(true)
+  }
 
   return (
-    <div className={`call-stage${compact ? ' compact' : ''}`}>
+    <div className={`call-stage${compact ? ' compact' : ''}${focused ? ' focused' : ''}${isTheater ? ' theater' : ''}`}>
+      {isTheater && (
+        <div className="theater-bar">
+          <span className="live-tag">CANLI</span>
+          <strong>{focused?.participant.name}</strong>
+          <span className="muted small">Çıkmak için Esc</span>
+          <button className="btn ghost small" onClick={() => setTheater(false)}><Icon name="back" size={16} /> Pencereden çık</button>
+        </div>
+      )}
       <div className={`voice-stage${focused ? ' has-focus' : ''}`}>
         {focused && (
           <div className="focus-area">
-            <TileView tile={focused} big onClick={() => setFocus(null)} />
+            <TileView tile={focused} big onClick={() => { setFocus(null); setTheater(false) }} onTheater={() => setTheater((t) => !t)} theater={isTheater} />
           </div>
         )}
         <div className={`tile-grid n${Math.min(rest.length, 9)}`}>
           {rest.map((t) => (
-            <TileView key={t.key} tile={t} onClick={() => setFocus(t.key)} />
+            <TileView key={t.key} tile={t} onClick={() => setFocus(t.key)} onTheater={() => openTheater(t.key)} />
           ))}
         </div>
       </div>
@@ -116,7 +139,7 @@ function VoiceHeader({ channel, onToggleMembers }: { channel: Channel; onToggleM
   )
 }
 
-function TileView({ tile, big, onClick }: { tile: Tile; big?: boolean; onClick: () => void }) {
+function TileView({ tile, big, onClick, onTheater, theater }: { tile: Tile; big?: boolean; onClick: () => void; onTheater?: () => void; theater?: boolean }) {
   const { profiles } = useApp()
   const ref = useRef<HTMLVideoElement>(null)
   const box = useRef<HTMLDivElement>(null)
@@ -153,7 +176,14 @@ function TileView({ tile, big, onClick }: { tile: Tile; big?: boolean; onClick: 
         <span>{p.name}{p.isLocal ? ' (sen)' : ''}</span>
       </div>
       {tile.track && (
-        <button className="tile-fs" onClick={fullscreen} title="Tam ekran"><Icon name="maximize" size={16} /></button>
+        <div className="tile-tools" onClick={(e) => e.stopPropagation()}>
+          {onTheater && (
+            <button onClick={onTheater} title={theater ? 'Pencereden çık' : 'Pencereyi doldur'}>
+              <Icon name={theater ? 'back' : 'maximize'} size={16} />
+            </button>
+          )}
+          <button onClick={fullscreen} title="Tam ekran (görev çubuğu dahil)"><Icon name="screen" size={16} /></button>
+        </div>
       )}
     </div>
   )

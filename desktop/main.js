@@ -98,6 +98,12 @@ if (!app.requestSingleInstanceLock()) {
     })
 
     win.once('ready-to-show', () => win.show())
+    // Gerçek uygulama hissi: tarayıcı gibi yakınlaştırılmasın (Ctrl+tekerlek / sıkıştırma)
+    win.webContents.setVisualZoomLevelLimits(1, 1).catch(() => {})
+    win.webContents.on('before-input-event', (event, input) => {
+      if ((input.control || input.meta) && ['+', '-', '=', '0'].includes(input.key)) event.preventDefault()
+    })
+    win.webContents.on('zoom-changed', () => win.webContents.setZoomFactor(1))
 
     // Site dışı bağlantılar varsayılan tarayıcıda açılır
     win.webContents.setWindowOpenHandler(({ url }) => {
