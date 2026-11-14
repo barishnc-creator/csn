@@ -234,6 +234,11 @@ create policy "davetler: moderatör oluşturur" on public.invites
 create policy "davetler: moderatör siler" on public.invites
   for delete to authenticated using (public.is_mod());
 
+-- Tablo yetkileri (yeni projelerde tablolar Data API'ye otomatik açılmayabilir; erişimi RLS sınırlar)
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on public.profiles, public.members, public.channels, public.messages, public.invites to authenticated;
+revoke all on public.profiles, public.members, public.channels, public.messages, public.invites from anon;
+
 -- Fonksiyon yetkileri
 revoke execute on function public.redeem_invite(text) from public, anon;
 revoke execute on function public.claim_first_admin() from public, anon;
