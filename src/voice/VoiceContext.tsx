@@ -8,7 +8,10 @@ import {
   RoomEvent,
   ScreenSharePresets,
   Track,
+  VideoPreset,
   VideoPresets,
+  type ScreenShareCaptureOptions,
+  type TrackPublishOptions,
   type RemoteTrack,
   type TrackPublication,
 } from 'livekit-client'
@@ -16,6 +19,15 @@ import { supabase } from '../lib/supabase'
 import { useApp } from '../lib/store'
 import { playSound } from './sounds'
 import { RnnoiseProcessor } from './rnnoise'
+import ScreenSharePicker, { type ShareChoice, type ShareQuality } from './ScreenSharePicker'
+import { getDesktop } from '../lib/desktop'
+
+// Ekran paylaşımı kalite profilleri (LiveKit'te hazır 1080p60 profili yok, elle tanımlı)
+const SHARE_PRESETS: Record<ShareQuality, VideoPreset> = {
+  smooth: ScreenSharePresets.h720fps30,
+  clear: ScreenSharePresets.h1080fps30,
+  game: new VideoPreset(1920, 1080, 8_000_000, 60, 'high'),
+}
 
 export type InputMode = 'vad' | 'ptt'
 
@@ -333,25 +345,71 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     bump()
   }, [room, settings.cameraId])
 
+  const [pickerOpen, setPickerOpen] = useState(false)
+
+  // Açmak: önce uygulama içi seçim penceresi. Kapatmak: anında.
   const toggleScreen = useCallback(async () => {
     if (room.state !== ConnectionState.Connected) return
-    const on = room.localParticipant.isScreenShareEnabled
-    try {
-      await room.localParticipant.setScreenShareEnabled(!on, {
-        audio: true,
-        systemAudio: 'include',
+    if (room.localParticipant.isScreenShareEnabled) {
+      try {
+        await room.localParticipant.setScreenShareEnabled(false)
+      } catch (e) {
+        setError(`Ekran paylaşımı kapatılamadı: ${(e as Error).message}`)
+      }
+      updatePresence({ streaming: false })
+      bump()
+      return
+    }
+    setPickerOpen(true)
+  }, [room, updatePresence])
+
+  const startScreenShare = useCallback(
+    async (choice: ShareChoice) => {
+      setPickerOpen(false)
+      if (room.state !== ConnectionState.Connected) return
+      const preset = SHARE_PRESETS[choice.quality]
+      const capture: ScreenShareCaptureOptions = {
+        audio: choice.audio,
+        systemAudio: choice.audio ? 'include' : 'exclude',
+        video: { displaySurface: choice.surface },
         selfBrowserSurface: 'exclude',
         surfaceSwitching: 'include',
-        contentHint: 'detail',
-        resolution: ScreenSharePresets.h1080fps30.resolution,
-      })
-      updatePresence({ streaming: !on })
-    } catch (e) {
-      const err = e as Error
-      if (err.name !== 'NotAllowedError') setError(`Ekran paylaşılamadı: ${err.message}`)
+        preferCurrentTab: false,
+        contentHint: choice.quality === 'game' ? 'motion' : 'detail',
+        resolution: preset.resolution,
+      }
+      const publish: TrackPublishOptions = { screenShareEncoding: preset.encoding }
+      try {
+        const desktop = getDesktop()
+        // Masaüstü: kaynağı ana sürece bildir; getDisplayMedia tarayıcı penceresi açmadan o kaynağı alır
+        if (desktop && choice.sourceId) await desktop.selectSource(choice.sourceId, choice.audio)
+        await room.localParticipant.setScreenShareEnabled(true, capture, publish)
+        updatePresence({ streaming: true })
+      } catch (e) {
+        const err = e as Error
+        if (err.name !== 'NotAllowedError' && err.name !== 'AbortError')
+          setError(`Ekran paylaşılamadı: ${err.message}`)
+      }
+      bump()
+    },
+    [room, updatePresence],
+  )
+
+  // Paylaşım dışarıdan biterse (tarayıcının "Paylaşmayı durdur" düğmesi, pencere kapanması) durumu düzelt
+  useEffect(() => {
+    const onLocalUnpub = (pub: TrackPublication) => {
+      if (pub.source === Track.Source.ScreenShare) updatePresence({ streaming: false })
     }
-    bump()
+    room.on(RoomEvent.LocalTrackUnpublished, onLocalUnpub)
+    return () => {
+      room.off(RoomEvent.LocalTrackUnpublished, onLocalUnpub)
+    }
   }, [room, updatePresence])
+
+  // Sesten çıkınca seçim penceresi açık kalmasın
+  useEffect(() => {
+    if (!channelId) setPickerOpen(false)
+  }, [channelId])
 
   const setVolume = useCallback(
     (userId: string, v: number) => {
@@ -469,6 +527,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={value}>
       {children}
       <div ref={audioHost} hidden />
+      <ScreenSharePicker open={pickerOpen} onClose={() => setPickerOpen(false)} onShare={startScreenShare} />
     </Ctx.Provider>
   )
 }

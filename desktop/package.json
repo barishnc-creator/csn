@@ -1,0 +1,46 @@
+{
+  "name": "csn-desktop",
+  "productName": "CSN",
+  "version": "0.1.0",
+  "description": "CSN masaüstü uygulaması",
+  "author": "CSN",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --publish never"
+  },
+  "devDependencies": {
+    "electron": "45.3.2",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "com.csn.desktop",
+    "productName": "CSN",
+    "artifactName": "CSN-Kurulum-${version}.${ext}",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "CSN"
+    },
+    "publish": null
+  }
+}
