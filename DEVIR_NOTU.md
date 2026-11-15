@@ -33,6 +33,8 @@ CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'
 | Revize #4 sağ tık menüsü: profil, mesaj, arkadaş, ses seviyesi, yöneticiye hızlı çoklu rol | ✅ |
 | Revize #5 sağ tık → Roller alt paneli, #6 kanal ayarları (görme + girme rolleri, `0009`), #7 durum seçimi (görünmez dahil), #8 sağda sabit üye paneli, #9 "Revize verebilir" rol yetkisi | ✅ |
 | Telefon görünümü (tek panel, geri düğmesi), PWA (ana ekrana ekle) | ✅ |
+| Davet bağlantısı (`?davet=KOD`), kanallarda okunmamış sayaç baloncuğu | ✅ |
+| GIF seçici (mesaj kutusunun sağı): `src/lib/gifs.json`, 295 GIPHY GIF, 16 kategori; arama + son kullanılanlar | ✅ GIF'ler canlıda görülmedi (GIPHY bu ortamdan erişilemiyor) |
 | Electron masaüstü uygulaması (`desktop/`), kurulum: Actions → "Masaüstü (Windows)" ya da `desktop-v*` etiketi | ✅ 0.1.1 yayında: https://github.com/barishnc-creator/csn/releases/latest (Actions → "Masaüstü (Windows)" elle başlatılınca `desktop/package.json` sürümüyle yeni Release açar; bu ortamdan etiket push'u engelli) |
 
 ## Migrationlar (sırayla uygulandı)
@@ -46,6 +48,8 @@ CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'
 - Bazı migrationlarda (politika silme) Supabase MCP kullanıcıdan onay ister; yanıt gelmezse zaman aşımı olur, kullanıcıya söyle.
 
 ## Sıradaki adaylar
+- Okunmamış sayılarını sunucuda saklama (şu an yenileyince sıfırlanıyor) — kullanıcıya önerildi
+- GIF araması için GIPHY API anahtarı (ücretsiz) alınırsa sınırsız arama eklenebilir
 0. Android uygulaması (Capacitor APK): kullanıcı "şimdilik kalsın" dedi, sormadan başlama
 1. Masaüstü: oyun içindeyken de çalışan bas-konuş (globalShortcut), sistem tepsisi, uygulama simgesi (`desktop/build/icon.ico`), otomatik güncelleme
    - Bilinen sınır: masaüstünde sistem sesi paylaşılınca CSN'nin kendi sesi de gider (yankı)
