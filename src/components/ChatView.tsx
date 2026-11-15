@@ -205,11 +205,9 @@ export default function ChatView({ channel, onToggleMembers }: { channel: Channe
             <button className={`icon-btn${panel === 'search' ? ' active' : ''}`} onClick={() => setPanel(panel === 'search' ? null : 'search')} title="Mesajlarda ara">
               <Icon name="search" />
             </button>
-            {!isDm && (
-              <button className="icon-btn" onClick={onToggleMembers} title="Üye listesi">
-                <Icon name="users" />
-              </button>
-            )}
+            <button className="icon-btn" onClick={onToggleMembers} title="Üye panelini aç/kapat">
+              <Icon name="users" />
+            </button>
           </div>
         </header>
 
