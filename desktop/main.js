@@ -8,6 +8,7 @@ const path = require('node:path')
 
 const APP_URL = 'https://barishnc-creator.github.io/csn/'
 const APP_ORIGIN = new URL(APP_URL).origin
+const TITLEBAR_HEIGHT = 34
 
 // Uygulama içinde kalan adresler: yalnız CSN sitesi
 function isAppUrl(url) {
@@ -70,6 +71,16 @@ if (!app.requestSingleInstanceLock()) {
       }))
   })
 
+  // Başlık çubuğu düğmelerinin rengi sayfanın temasına uyar
+  const HEX = /^#[0-9a-f]{6}$/i
+  ipcMain.handle('csn:titlebar', async (event, color, symbolColor) => {
+    if (!senderAllowed(event) || !win) return
+    if (!HEX.test(String(color)) || !HEX.test(String(symbolColor))) return
+    try {
+      win.setTitleBarOverlay({ color, symbolColor, height: TITLEBAR_HEIGHT })
+    } catch {}
+  })
+
   ipcMain.handle('csn:select-source', async (event, id, withAudio) => {
     if (!senderAllowed(event)) throw new Error('İzin yok')
     if (typeof id !== 'string') throw new Error('Geçersiz kaynak')
@@ -85,6 +96,10 @@ if (!app.requestSingleInstanceLock()) {
       title: 'CSN',
       backgroundColor: '#0f1117',
       autoHideMenuBar: true,
+      // Windows'un beyaz başlık çubuğu yerine sayfanın kendi (temaya uygun) çubuğu;
+      // küçült / büyüt / kapat düğmeleri üstte kalır, rengi sayfadan ayarlanır
+      titleBarStyle: 'hidden',
+      titleBarOverlay: { color: '#08080b', symbolColor: '#b0b1c0', height: TITLEBAR_HEIGHT },
       show: false,
       webPreferences: {
         preload: path.join(__dirname, 'preload.js'),
@@ -135,6 +150,12 @@ if (!app.requestSingleInstanceLock()) {
         e.preventDefault()
       }
     })
+
+    // Tam ekranda sayfa kendi başlık çubuğunu gizler
+    const sendFullscreen = () => win && win.webContents.send('csn:fullscreen', win.isFullScreen())
+    win.on('enter-full-screen', sendFullscreen)
+    win.on('leave-full-screen', sendFullscreen)
+    win.webContents.on('did-finish-load', sendFullscreen)
 
     win.on('closed', () => {
       win = null

@@ -1218,3 +1218,19 @@ a { color: var(--accent-2); }
 .music-chip { padding: 4px 6px 4px 10px; }
 .music-chip-open { display: flex; align-items: center; gap: 8px; min-width: 0; color: inherit; font: inherit; padding: 2px 4px; }
 .music-chip-start { flex: none; font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: var(--grad); color: #fff; }
+
+/* ───────── Masaüstü: temaya uygun başlık çubuğu ───────── */
+.desk-titlebar { display: none; }
+.desktop-frame .desk-titlebar {
+  position: fixed; inset: 0 0 auto 0; z-index: 1000; height: var(--titlebar-h, 34px);
+  display: flex; align-items: center; gap: 8px; padding: 0 12px; padding-right: 150px;
+  background: var(--bg-rail); color: var(--text-2); font-size: 12.5px; font-weight: 700; letter-spacing: 0.04em;
+  -webkit-app-region: drag; user-select: none; transition: background 0.3s;
+}
+.desk-titlebar-logo { width: 18px; height: 18px; border-radius: 6px; display: grid; place-items: center; background: var(--grad); color: #fff; font-size: 11px; font-weight: 800; }
+.desktop-frame #root { padding-top: var(--titlebar-h, 34px); box-sizing: border-box; }
+.desktop-frame .app { height: calc(100dvh - var(--titlebar-h, 34px)); }
+.desktop-frame.desktop-fullscreen .desk-titlebar { display: none; }
+.desktop-frame.desktop-fullscreen #root { padding-top: 0; }
+.desktop-frame.desktop-fullscreen .app { height: 100dvh; }
+.desktop-frame:not(.desktop-fullscreen) :is(.lightbox, .modal-backdrop, .call-stage.theater) { top: var(--titlebar-h, 34px); }
