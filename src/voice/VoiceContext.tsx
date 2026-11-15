@@ -135,6 +135,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<VoiceSettings>(loadSettings)
   const [version, bump] = useReducer((x: number) => x + 1, 0)
 
+  const shareAttempt = useRef(false)
   const audioHost = useRef<HTMLDivElement | null>(null)
   const settingsRef = useRef(settings)
   settingsRef.current = settings
@@ -196,7 +197,11 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
       .on(RoomEvent.TrackUnpublished, bump)
       .on(RoomEvent.ConnectionStateChanged, bump)
       .on(RoomEvent.Disconnected, onDisconnected)
-      .on(RoomEvent.MediaDevicesError, (e: Error) => setError(`Cihaz hatası: ${e.message}`))
+      .on(RoomEvent.MediaDevicesError, (e: Error) => {
+        // Ekran paylaşımı penceresinde "İptal" demek hata değildir
+        if (shareAttempt.current && (e.name === 'NotAllowedError' || e.name === 'AbortError' || /denied/i.test(e.message))) return
+        setError(`Cihaz hatası: ${e.message}`)
+      })
     return () => {
       room.removeAllListeners()
       room.disconnect()
@@ -366,6 +371,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   const startScreenShare = useCallback(
     async (choice: ShareChoice) => {
       setPickerOpen(false)
+      shareAttempt.current = true
       if (room.state !== ConnectionState.Connected) return
       const preset = SHARE_PRESETS[choice.quality]
       const capture: ScreenShareCaptureOptions = {
@@ -389,6 +395,8 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
         const err = e as Error
         if (err.name !== 'NotAllowedError' && err.name !== 'AbortError')
           setError(`Ekran paylaşılamadı: ${err.message}`)
+      } finally {
+        window.setTimeout(() => (shareAttempt.current = false), 500)
       }
       bump()
     },
