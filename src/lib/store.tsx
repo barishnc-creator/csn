@@ -52,6 +52,8 @@ interface AppState {
   nameColor: (uid: string) => string | undefined
   /** DM kanalındaki diğer kişi */
   dmPartner: (channelId: string) => string | undefined
+  /** Kanala girebilir mi (ses: bağlanma, metin: yazma) */
+  canJoin: (ch: Channel) => boolean
   // Gezinme
   mode: ViewMode
   selectedId: string | null
@@ -133,7 +135,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
 
   const refreshChannels = useCallback(async () => {
     const [c, cm] = await Promise.all([
-      supabase.from('channels').select('id, name, kind, topic, position, allowed_roles'),
+      supabase.from('channels').select('*'),
       supabase.from('channel_members').select('channel_id, user_id'),
     ])
     if (c.data) setChannels(sortChannels(c.data as Channel[]))
@@ -352,6 +354,8 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       can,
       rolesOf,
       nameColor: (uid) => rolesOf(uid).find((r) => r.color && r.color !== '#99aab5')?.color,
+      canJoin: (ch) =>
+        ch.kind === 'dm' || !ch.join_roles?.length || me?.role === 'admin' || rolesOf(userId).some((r) => ch.join_roles!.includes(r.id)),
       dmPartner: (cid) => dmMembers.find((d) => d.channel_id === cid && d.user_id !== userId)?.user_id,
       mode,
       selectedId,

@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useVoice } from '../voice/VoiceContext'
 import Avatar from './Avatar'
 import Icon from './Icon'
+import ChannelSettingsModal from './ChannelSettingsModal'
 import type { SettingsTab } from './SettingsModal'
 
 interface Props {
@@ -17,7 +18,8 @@ interface Props {
 }
 
 export default function ChannelSidebar({ currentId, onSelect, unread, mentions, onOpenSettings, onFriends }: Props) {
-  const { channels, presence, profiles, myRole, isOwner, can, openProfile, openUserMenu } = useApp()
+  const { channels, presence, profiles, myRole, isOwner, can, openProfile, openUserMenu, canJoin } = useApp()
+  const [chSettings, setChSettings] = useState<string | null>(null)
   const voice = useVoice()
   const [menu, setMenu] = useState(false)
 
@@ -111,8 +113,11 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
             >
               <Icon name="hash" size={18} className="channel-icon" />
               <span className="channel-name">{c.name}</span>
-              {c.allowed_roles?.length ? <Icon name="lock" size={13} className="channel-lock" /> : null}
+              {c.allowed_roles?.length || !canJoin(c) ? <Icon name="lock" size={13} className="channel-lock" /> : null}
               {m > 0 && <span className="badge">{m}</span>}
+              {can('manage_channels') && (
+                <span className="channel-gear" title="Kanal ayarları" onClick={(e) => { e.stopPropagation(); setChSettings(c.id) }}><Icon name="gear" size={14} /></span>
+              )}
             </button>
           )
         })}
@@ -128,7 +133,10 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
               >
                 <Icon name="speaker" size={18} className="channel-icon" />
                 <span className="channel-name">{c.name}</span>
-                {c.allowed_roles?.length ? <Icon name="lock" size={13} className="channel-lock" /> : null}
+                {c.allowed_roles?.length || !canJoin(c) ? <Icon name="lock" size={13} className="channel-lock" /> : null}
+                {can('manage_channels') && (
+                  <span className="channel-gear" title="Kanal ayarları" onClick={(e) => { e.stopPropagation(); setChSettings(c.id) }}><Icon name="gear" size={14} /></span>
+                )}
                 {voice.connecting && voice.channelId !== c.id && currentId === c.id && <span className="mini-spinner" />}
               </button>
               {inside.map((p) => (
@@ -157,6 +165,7 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
       <UserPanel onOpenSettings={onOpenSettings} />
 
       {reloadOpen && <ReloadDialog onClose={() => setReloadOpen(false)} />}
+      {chSettings && <ChannelSettingsModal channelId={chSettings} onClose={() => setChSettings(null)} />}
     </aside>
   )
 }

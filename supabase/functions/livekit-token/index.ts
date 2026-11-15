@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
 
   const [{ data: member }, { data: channel }, { data: profile }] = await Promise.all([
     admin.from('members').select('role').eq('user_id', user.id).maybeSingle(),
-    admin.from('channels').select('id, kind, allowed_roles').eq('id', channelId).maybeSingle(),
+    admin.from('channels').select('*').eq('id', channelId).maybeSingle(),
     admin.from('profiles').select('display_name').eq('id', user.id).maybeSingle(),
   ])
   if (!member) return json({ error: 'CSN üyesi değilsin' }, 403)
@@ -83,6 +83,12 @@ Deno.serve(async (req) => {
     const { data: mr } = await admin
       .from('member_roles').select('role_id').eq('user_id', user.id).in('role_id', channel.allowed_roles)
     if (!mr?.length) return json({ error: 'Bu kanala girme iznin yok' }, 403)
+  }
+  if (channel.kind === 'voice' && member.role !== 'admin' && channel.join_roles?.length) {
+    // Revize #6: kanalı görse bile yalnız izinli roller bağlanabilir
+    const { data: jr } = await admin
+      .from('member_roles').select('role_id').eq('user_id', user.id).in('role_id', channel.join_roles)
+    if (!jr?.length) return json({ error: 'Bu ses kanalına bağlanma iznin yok' }, 403)
   }
 
   const now = Math.floor(Date.now() / 1000)

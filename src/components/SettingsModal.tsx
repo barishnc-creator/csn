@@ -9,6 +9,7 @@ import { useVoice } from '../voice/VoiceContext'
 import Avatar from './Avatar'
 import Icon, { type IconName } from './Icon'
 import RevisionsTab from './RevisionsTab'
+import ChannelSettingsModal from './ChannelSettingsModal'
 import { ProfileCard } from './UserProfileModal'
 
 export type SettingsTab = 'profile' | 'voice' | 'invites' | 'channels' | 'roles' | 'members' | 'revisions'
@@ -485,6 +486,7 @@ function InvitesTab() {
 
 function ChannelsTab() {
   const { channels, roles } = useApp()
+  const [editing, setEditing] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [kind, setKind] = useState<ChannelKind>('text')
   const [error, setError] = useState<string | null>(null)
@@ -495,9 +497,12 @@ function ChannelsTab() {
     const clean = kind === 'text' ? name.trim().toLocaleLowerCase('tr').replace(/\s+/g, '-') : name.trim()
     if (!clean) return
     const position = Math.max(-1, ...list.filter((c) => c.kind === kind).map((c) => c.position)) + 1
-    const { error } = await supabase.from('channels').insert({ name: clean, kind, position })
+    const { data, error } = await supabase.from('channels').insert({ name: clean, kind, position }).select('id').single()
     if (error) setError(error.message)
-    else setName('')
+    else {
+      setName('')
+      if (data) setEditing(data.id) // yeni kanalın ayarlarını hemen aç
+    }
   }
 
   async function update(c: Channel, patch: Partial<Channel>) {
@@ -528,15 +533,16 @@ function ChannelsTab() {
           <button className={kind === 'voice' ? 'active' : ''} onClick={() => setKind('voice')}><Icon name="speaker" size={16} /> Ses</button>
         </div>
         <input className="grow" value={name} onChange={(e) => setName(e.target.value)} placeholder={kind === 'text' ? 'yeni-kanal' : 'Yeni ses kanalı'} maxLength={40} onKeyDown={(e) => e.key === 'Enter' && add()} />
-        <button className="btn primary" onClick={add} disabled={!name.trim()}><Icon name="plus" size={16} /> Kanal ekle</button>
+        <button className="btn primary" onClick={add} disabled={!name.trim()}><Icon name="plus" size={16} /> Oluştur ve ayarla</button>
       </div>
       {error && <div className="form-error">{error}</div>}
+      {editing && <ChannelSettingsModal channelId={editing} onClose={() => setEditing(null)} />}
       {(['text', 'voice'] as const).map((k) => (
         <section key={k}>
           <h3>{k === 'text' ? 'Metin kanalları' : 'Ses kanalları'}</h3>
           <div className="list-card">
             {list.filter((c) => c.kind === k).map((c) => (
-              <ChannelRow key={c.id} c={c} roles={roles} onSave={(p) => update(c, p)} onDelete={() => remove(c)} onMove={(d) => move(c, d)} />
+              <ChannelRow key={c.id} c={c} roles={roles} onSave={(p) => update(c, p)} onDelete={() => remove(c)} onMove={(d) => move(c, d)} onSettings={() => setEditing(c.id)} />
             ))}
           </div>
         </section>
@@ -545,17 +551,13 @@ function ChannelsTab() {
   )
 }
 
-function ChannelRow({ c, roles, onSave, onDelete, onMove }: { c: Channel; roles: CustomRole[]; onSave: (p: Partial<Channel>) => void; onDelete: () => void; onMove: (d: -1 | 1) => void }) {
+function ChannelRow({ c, roles, onSave, onDelete, onMove, onSettings }: { c: Channel; roles: CustomRole[]; onSave: (p: Partial<Channel>) => void; onDelete: () => void; onMove: (d: -1 | 1) => void; onSettings: () => void }) {
   const [name, setName] = useState(c.name)
   const [topic, setTopic] = useState(c.topic ?? '')
-  const [open, setOpen] = useState(false)
   const dirty = name !== c.name || topic !== (c.topic ?? '')
-  const allowed = c.allowed_roles ?? []
-
-  function toggleRole(id: string) {
-    const next = allowed.includes(id) ? allowed.filter((x) => x !== id) : [...allowed, id]
-    onSave({ allowed_roles: next.length ? next : null })
-  }
+  const viewN = c.allowed_roles?.length ?? 0
+  const joinN = c.join_roles?.length ?? 0
+  const roleNames = (ids: string[] | null) => (ids ?? []).map((id) => roles.find((r) => r.id === id)?.name).filter(Boolean).join(', ')
 
   return (
     <div className="channel-row-v2">
@@ -564,28 +566,19 @@ function ChannelRow({ c, roles, onSave, onDelete, onMove }: { c: Channel; roles:
         <input value={name} onChange={(e) => setName(e.target.value)} maxLength={40} />
         {c.kind === 'text' && <input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Konu (isteğe bağlı)" maxLength={200} />}
         {dirty && <button className="btn success small" onClick={() => onSave({ name: name.trim(), topic: topic.trim() || null })}>Kaydet</button>}
-        <button className={`chip-btn${allowed.length ? ' on' : ''}`} onClick={() => setOpen((o) => !o)} title="Kimler görebilir">
-          <Icon name={allowed.length ? 'lock' : 'users'} size={14} /> {allowed.length ? `${allowed.length} rol` : 'Herkes'}
-        </button>
+        <span className={`chip-btn${viewN ? ' on' : ''}`} title={viewN ? `Görebilir: ${roleNames(c.allowed_roles)}` : 'Herkes görebilir'}>
+          <Icon name={viewN ? 'lock' : 'users'} size={14} /> {viewN ? `${viewN} rol görür` : 'Herkes'}
+        </span>
+        {joinN > 0 && (
+          <span className="chip-btn on" title={`${c.kind === 'voice' ? 'Bağlanabilir' : 'Yazabilir'}: ${roleNames(c.join_roles)}`}>
+            <Icon name={c.kind === 'voice' ? 'mic' : 'edit'} size={14} /> {joinN} rol
+          </span>
+        )}
+        <button className="btn small" onClick={onSettings}><Icon name="gear" size={15} /> Kanal ayarları</button>
         <button className="icon-btn" onClick={() => onMove(-1)} title="Yukarı taşı">↑</button>
         <button className="icon-btn" onClick={() => onMove(1)} title="Aşağı taşı">↓</button>
         <button className="icon-btn danger" onClick={onDelete} title="Sil"><Icon name="trash" size={16} /></button>
       </div>
-      {open && (
-        <div className="channel-access">
-          <div className="muted small">
-            Hiç rol seçmezsen kanalı herkes görür. Rol seçersen yalnız o rollerdeki üyeler (ve yöneticiler) görür.
-          </div>
-          {roles.length === 0 && <div className="muted small">Önce <strong>Roller</strong> bölümünden rol oluştur.</div>}
-          <div className="role-chips">
-            {roles.map((r) => (
-              <button key={r.id} className={`role-chip toggle${allowed.includes(r.id) ? ' on' : ''}`} style={{ ['--role' as string]: r.color }} onClick={() => toggleRole(r.id)}>
-                <i /> {r.name} {allowed.includes(r.id) && <Icon name="check" size={12} />}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   )
 }

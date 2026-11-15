@@ -71,6 +71,7 @@ export interface Channel {
   topic: string | null
   position: number
   allowed_roles: string[] | null
+  join_roles: string[] | null
 }
 
 export interface Attachment {

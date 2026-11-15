@@ -731,3 +731,16 @@ html, body, #root { overflow: hidden; overscroll-behavior: none; }
 .profile-inner { padding-top: 64px; }
 .cover-thumb { background-size: cover; background-position: center; border: 1px solid var(--line-2); }
 .btn:focus:not(:focus-visible) { outline: none; }
+
+/* Kanal ayarları (revize #6) */
+.channel-dialog { width: min(560px, 100%); max-height: calc(100vh - 48px); overflow-y: auto; }
+.channel-dialog .dialog-head h3 { display: flex; align-items: center; gap: 8px; }
+.perm-block { background: var(--bg-3); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.perm-block-head { display: flex; gap: 10px; align-items: flex-start; }
+.perm-block-head > svg { margin-top: 3px; color: var(--text-2); flex: none; }
+.dialog-actions.spread { justify-content: space-between; }
+.role-chip.toggle:disabled { opacity: 0.3; cursor: not-allowed; }
+.channel-gear { display: none; color: var(--text-3); padding: 2px; border-radius: 5px; }
+.channel:hover .channel-gear { display: grid; place-items: center; }
+.channel-gear:hover { color: var(--text); background: var(--hover); }
+.readonly-bar { margin: 0 20px 20px; padding: 12px 14px; border-radius: 12px; background: var(--bg-3); border: 1px solid var(--line); color: var(--text-3); display: flex; align-items: center; gap: 8px; font-size: 14px; }

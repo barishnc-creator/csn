@@ -16,7 +16,7 @@ const GROUP_MS = 5 * 60 * 1000
 type Panel = 'pins' | 'search' | null
 
 export default function ChatView({ channel, onToggleMembers }: { channel: Channel; onToggleMembers: () => void }) {
-  const { userId, can, dmPartner, profiles, presence, openProfile } = useApp()
+  const { userId, can, dmPartner, profiles, presence, openProfile, canJoin } = useApp()
   const voice = useVoice()
   const [messages, setMessages] = useState<Message[]>([])
   const [reactions, setReactions] = useState<Reaction[]>([])
@@ -272,6 +272,9 @@ export default function ChatView({ channel, onToggleMembers }: { channel: Channe
           })}
         </div>
 
+        {!canJoin(channel) ? (
+          <div className="readonly-bar"><Icon name="lock" size={16} /> Bu kanalda yalnız okuma iznin var.</div>
+        ) : (
         <Composer
           channel={channel}
           placeholder={isDm ? `@${title} kişisine mesaj gönder` : `#${channel.name} kanalına mesaj gönder`}
@@ -280,6 +283,7 @@ export default function ChatView({ channel, onToggleMembers }: { channel: Channe
           onSend={send}
           onEditLast={editLast}
         />
+        )}
       </div>
 
       {panel === 'pins' && <PinsPanel channelId={channel.id} onClose={() => setPanel(null)} onJump={jumpTo} />}
