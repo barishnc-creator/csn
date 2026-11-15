@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { Room } from 'livekit-client'
 import { supabase } from '../lib/supabase'
 import { useApp } from '../lib/store'
-import { uploadFile } from '../lib/files'
-import { formatTag } from '../lib/format'
+import { signedUrl, uploadFile } from '../lib/files'
+import { colorFor, formatTag } from '../lib/format'
 import type { Channel, ChannelKind, CustomRole, Invite, Permission, Role } from '../lib/types'
 import { useVoice } from '../voice/VoiceContext'
 import Avatar from './Avatar'
@@ -186,13 +186,13 @@ function ProfileTab() {
           <div className="avatar-row">
             <Avatar profile={me} userId={userId} size={64} />
             <div>
-              <button className="btn" onClick={() => fileRef.current?.click()}><Icon name="camera" size={16} /> Fotoğraf yükle</button>
+              <button className="btn" onClick={() => fileRef.current?.click()}><Icon name="image" size={16} /> Fotoğraf yükle</button>
               <div className="muted small">PNG/JPG, en fazla 5 MB</div>
             </div>
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && changeAvatar(e.target.files[0])} />
           </div>
           <div className="avatar-row cover-row">
-            <div className="cover-thumb"><Icon name="sparkles" size={20} /></div>
+            <CoverThumb path={me?.banner_path ?? null} color={banner || null} userId={userId} />
             <div>
               <div className="row">
                 <button className="btn" onClick={() => coverRef.current?.click()}><Icon name="plus" size={16} /> Kapak fotoğrafı yükle</button>
@@ -836,5 +836,25 @@ function MembersTab() {
         })}
       </div>
     </div>
+  )
+}
+
+function CoverThumb({ path, color, userId }: { path: string | null; color: string | null; userId: string }) {
+  const [url, setUrl] = useState<string | null>(null)
+  useEffect(() => {
+    let alive = true
+    if (!path) setUrl(null)
+    else signedUrl(path).then((u) => alive && setUrl(u))
+    return () => {
+      alive = false
+    }
+  }, [path])
+  const c = color ?? colorFor(userId)
+  return (
+    <div
+      className="cover-thumb"
+      style={url ? { backgroundImage: `url("${url}")` } : { background: `linear-gradient(135deg, ${c}, color-mix(in srgb, ${c} 55%, #000))` }}
+      title={url ? 'Mevcut kapak fotoğrafı' : 'Kapak rengi'}
+    />
   )
 }

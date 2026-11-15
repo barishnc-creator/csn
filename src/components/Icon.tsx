@@ -1,6 +1,7 @@
 // Lucide çizgi ikonları (24x24)
 import {
   ArrowLeft,
+  ImagePlus,
   AudioWaveform,
   Bell,
   Check,
@@ -86,6 +87,7 @@ const icons = {
   sparkles: Sparkles,
   wave: AudioWaveform,
   power: Power,
+  image: ImagePlus,
 } satisfies Record<string, LucideIcon>
 
 export type IconName = keyof typeof icons
