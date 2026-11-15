@@ -25,6 +25,8 @@ export default function Layout() {
   const [unread, setUnread] = useState<Record<string, number>>({})
   const [mentions, setMentions] = useState<Record<string, number>>({})
   const [lastServerChannel, setLastServerChannel] = useState<string | null>(null)
+  // Telefonda tek panel: 'nav' = kanal/DM listesi, 'main' = sohbet
+  const [mobileView, setMobileView] = useState<'nav' | 'main'>('nav')
 
   const serverChannels = channels.filter((c) => c.kind !== 'dm')
   const dmChannels = channels.filter((c) => c.kind === 'dm')
@@ -132,18 +134,28 @@ export default function Layout() {
   }, [reloadNotice, voice.channelId])
 
   function selectChannel(id: string) {
+    if (!id) {
+      setMobileView('main') // Arkadaşlar sayfası
+      return
+    }
     const ch = channels.find((c) => c.id === id)
     if (!ch) return
     select(id, ch.kind === 'dm' ? 'dm' : 'server')
+    setMobileView('main')
     if (ch.kind === 'voice' && voice.channelId !== id) voice.join(id)
   }
+
+  // DM açılınca (profil kartından vb.) telefonda sohbete geç
+  useEffect(() => {
+    if (selectedId) setMobileView('main')
+  }, [selectedId])
 
   const { friendships } = useApp()
   const incomingRequests = friendships.filter((f) => f.status === 'pending' && f.addressee === userId).length
   const dmUnread = dmChannels.reduce((a, c) => a + (unread[c.id] ?? 0), 0) + incomingRequests
 
   return (
-    <div className="app">
+    <div className={`app mobile-${mobileView}`}>
       <nav className="server-rail">
         <button
           className={`rail-btn home${mode === 'dm' ? ' active' : ''}`}
@@ -151,6 +163,7 @@ export default function Layout() {
           onClick={() => {
             setMode('dm')
             select(null, 'dm')
+            setMobileView('nav')
           }}
         >
           <Icon name="message" size={22} />
@@ -169,10 +182,11 @@ export default function Layout() {
       {mode === 'dm' ? (
         <DmSidebar currentId={current?.id ?? null} onSelect={selectChannel} unread={unread} onOpenSettings={setSettings} />
       ) : (
-        <ChannelSidebar currentId={current?.id ?? null} onSelect={selectChannel} unread={unread} mentions={mentions} onOpenSettings={setSettings} onFriends={() => select(null, 'dm')} />
+        <ChannelSidebar currentId={current?.id ?? null} onSelect={selectChannel} unread={unread} mentions={mentions} onOpenSettings={setSettings} onFriends={() => { select(null, 'dm'); setMobileView('main') }} />
       )}
 
       <main className="main">
+        <button className="mobile-back" onClick={() => setMobileView('nav')} title="Geri"><Icon name="back" size={20} /></button>
         {current?.kind === 'voice' ? (
           <VoiceView channel={current} onToggleMembers={() => setShowMembers((s) => !s)} />
         ) : current ? (

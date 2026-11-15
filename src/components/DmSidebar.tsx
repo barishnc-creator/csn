@@ -41,7 +41,7 @@ export default function DmSidebar({ currentId, onSelect, unread, onOpenSettings 
       </header>
 
       <div className="channel-scroll">
-        <button className={`dm-item friends-link${currentId === null ? ' active' : ''}`} onClick={() => select(null, 'dm')}>
+        <button className={`dm-item friends-link${currentId === null ? ' active' : ''}`} onClick={() => { select(null, 'dm'); onSelect('') }}>
           <span className="friends-icon"><Icon name="friends" size={18} /></span>
           <span className="dm-name">Arkadaşlar</span>
           {incomingCount > 0 && <span className="badge">{incomingCount}</span>}

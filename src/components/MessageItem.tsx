@@ -58,7 +58,7 @@ function MessageItem({ message: m, grouped, replied, reactions, editing, canDele
   }
 
   return (
-    <div className={`message${grouped ? ' grouped' : ''}${highlighted ? ' mentioned' : ''}${m.pinned_at ? ' pinned' : ''}`}>
+    <div tabIndex={-1} className={`message${grouped ? ' grouped' : ''}${highlighted ? ' mentioned' : ''}${m.pinned_at ? ' pinned' : ''}`}>
       {m.reply_to ? (
         <div className="reply-ref" onClick={() => m.reply_to && onJump(m.reply_to)}>
           <span className="reply-line" />
