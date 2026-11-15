@@ -9,6 +9,7 @@ import ChannelSidebar from './ChannelSidebar'
 import DmSidebar from './DmSidebar'
 import ChatView from './ChatView'
 import MemberList from './MemberList'
+import FriendsActivity from './FriendsActivity'
 import VoiceView from './VoiceView'
 import SettingsModal, { type SettingsTab } from './SettingsModal'
 import UserProfileModal from './UserProfileModal'
@@ -107,6 +108,27 @@ export default function Layout() {
       supabase.removeChannel(ch)
     }
   }, [userId, myName, myStatus, profiles])
+
+  // Revize #26: yetkili biri beni başka bir ses odasına taşıdı
+  const voiceRef = useRef(voice)
+  voiceRef.current = voice
+  useEffect(() => {
+    const ch = supabase
+      .channel('csn-voice-moves')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'voice_moves', filter: `target=eq.${userId}` }, (p) => {
+        const row = p.new as { channel_id: string }
+        const v = voiceRef.current
+        const target = channelsRef.current.find((c) => c.id === row.channel_id && c.kind === 'voice')
+        // Yalnız şu an bir ses kanalındaysam taşınırım
+        if (!target || !v.channelId || v.channelId === target.id) return
+        select(target.id, 'server')
+        v.join(target.id)
+      })
+      .subscribe()
+    return () => {
+      supabase.removeChannel(ch)
+    }
+  }, [userId, select])
 
   // Pencere başlığı
   const totalMentions = Object.values(mentions).reduce((a, b) => a + b, 0)
@@ -220,7 +242,7 @@ export default function Layout() {
         )}
       </main>
 
-      {showMembers && <MemberList onOpenRevisions={() => setSettings('revisions')} />}
+      {showMembers && (mode === 'dm' ? <FriendsActivity /> : <MemberList onOpenRevisions={() => setSettings('revisions')} />)}
       {settings && <SettingsModal initialTab={settings} onClose={() => setSettings(null)} />}
       {profileOf && <UserProfileModal userId={profileOf} onClose={() => openProfile(null)} onEditProfile={() => { openProfile(null); setSettings('profile') }} />}
 

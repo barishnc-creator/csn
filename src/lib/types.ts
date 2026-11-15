@@ -16,7 +16,7 @@ export interface Profile {
   bot_presence?: UserStatus | null
 }
 
-export type Permission = 'manage_channels' | 'kick_members' | 'create_invites' | 'manage_messages' | 'mention_everyone' | 'submit_revisions' | 'manage_sounds'
+export type Permission = 'manage_channels' | 'kick_members' | 'create_invites' | 'manage_messages' | 'mention_everyone' | 'submit_revisions' | 'manage_sounds' | 'move_members'
 
 export interface CustomRole {
   id: string
@@ -75,6 +75,8 @@ export interface Channel {
   allowed_roles: string[] | null
   join_roles: string[] | null
   category_id: string | null
+  /** Revize #26: ses odası kişi sınırı (null = sınırsız) */
+  user_limit?: number | null
 }
 
 /** Revize #25: kanal kategorisi (metin ya da ses) */

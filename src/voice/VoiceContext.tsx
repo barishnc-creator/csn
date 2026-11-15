@@ -275,8 +275,9 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
       if (id === channelId || connecting) return
       setError(null)
       setConnecting(true)
+      let switched = false
       try {
-        if (room.state !== ConnectionState.Disconnected) await room.disconnect()
+        // Önce anahtar alınır: oda doluysa ya da izin yoksa mevcut görüşme kopmaz
         const { data, error } = await supabase.functions.invoke<{ token: string; url: string; error?: string }>(
           'livekit-token',
           { body: { channelId: id } },
@@ -293,6 +294,8 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
           }
           throw new Error(msg)
         }
+        switched = true
+        if (room.state !== ConnectionState.Disconnected) await room.disconnect()
         await room.connect(data.url, data.token)
         await room.startAudio()
         const s = settingsRef.current
@@ -303,8 +306,11 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
         await syncMic(muted, false)
       } catch (e) {
         setError((e as Error).message)
-        room.disconnect()
-        setChannelId(null)
+        if (switched) {
+          room.disconnect()
+          setChannelId(null)
+          updatePresence({ voice_channel_id: null, streaming: false })
+        }
       } finally {
         setConnecting(false)
         bump()

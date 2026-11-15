@@ -1,7 +1,7 @@
 # CSN — Devir notu
 
 > Yeni bir oturum buradan devam eder. Önce bunu, sonra `CLAUDE.md`'yi oku.
-> Son güncelleme: 2026-11-15 (revize #17, #20-#23 yayında)
+> Son güncelleme: 2026-11-15 (revize #26, #27, #28 yayında)
 
 ## Durum özeti
 CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'e her push'ta `.github/workflows/pages.yml` ile yayınlanır).
@@ -49,10 +49,13 @@ CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'
 | Masaüstü 0.1.3: Windows başlık çubuğu yerine sayfanın çizdiği temaya uygun çubuk (`titleBarStyle:'hidden'` + `titleBarOverlay`, `initDesktopTitleBar` in `src/lib/desktop.ts`, renkler `csn:titlebar` IPC ile); müzik kartı (`MusicPanel`) hep küçük başlar | ✅ Windows'ta denenmedi |
 | Revize #24 rollere "Soundpad'e ses ekleyebilir" yetkisi (`manage_sounds`, `0018`): yetkili ekler, kendi sesini siler; yöneticiler hepsini | ✅ SQL ile test edildi |
 | Revize #25 kanal kategorileri (`0019`, `channel_categories`, `channels.category_id`): bölüm başlığında 📁+ ile kategori, kategori başlığında + ile içine kanal, ⚙ ile ad değiştir/sil (kanallar silinmez), daraltma bu cihazda hatırlanır; kanal ayarlarından kategori değişir (`CategoryModal.tsx`). Sahip notu: sol alttaki ⚙ doğrudan Ayarlar panelini açar; Herkesi yenile + Uygulama olarak yükle panelin sol menüsünde (`ReloadDialog.tsx`) | ✅ SQL ile test edildi, sahte veriyle ekran görüntüsü |
+| Revize #26 oda ayarları (`0020`): ses odasına kişi sınırı (kanal ayarlarında kaydırıcı, `channels.user_limit`; `livekit-token` LiveKit `ListParticipants` ile sayar, yöneticiler ve taşınan kişi sınırsız), oda adının yanında `içerideki/sınır` rozeti (dolunca kırmızı), rol yetkisi "Üyeleri taşı" (`move_members`), sağ tık → Taşı › odalar (`voice_moves` tablosu, hedef realtime ile o odaya geçer). Anahtar artık önce alınıyor: oda doluysa mevcut görüşme kopmaz | ✅ RLS SQL ile test edildi, sahte veriyle ekran görüntüsü; **canlı denenmedi** (LiveKit sayımı dahil) |
+| Revize #27 kanal başlıkları: METİN/SES KANALLARI ve kategori başlıkları üye paneli gibi (ikon kutucuğu, sayı rozeti, gradyan çizgi) | ✅ sahte veriyle ekran görüntüsü |
+| Revize #28 DM modunda sağda **Arkadaş etkinliği** paneli (`FriendsActivity.tsx`): çevrimiçi/seste olanlar üstte, sunucu (CSN) + ses kanalı adı, CANLI etiketi, "Katıl" düğmesi; sunucu modunda üye paneli kalır | ✅ sahte veriyle ekran görüntüsü |
 | Electron masaüstü uygulaması (`desktop/`), kurulum: Actions → "Masaüstü (Windows)" ya da `desktop-v*` etiketi | ✅ 0.1.1 yayında: https://github.com/barishnc-creator/csn/releases/latest (Actions → "Masaüstü (Windows)" elle başlatılınca `desktop/package.json` sürümüyle yeni Release açar; bu ortamdan etiket push'u engelli) |
 
 ## Migrationlar (sırayla uygulandı)
-`0001_init` → `0002_lock_anon_functions` → `0003_owner_and_revisions` → `0004_dm_kind` → `0005_roles_dm_reactions_pins_profile` → `0006_server_reload` → `0007_friendships` → `0008_tag_banner` → `0009_channel_join_roles` → `0010_channels_select_row_based` → `0011_submit_revisions_perm` → `0012_music` → `0013_soundpad` → `0014_server_theme` → `0015_stickers` → `0016_music_bot` → `0017_bot_settings` → `0018_manage_sounds_perm` → `0019_channel_categories`
+`0001_init` → `0002_lock_anon_functions` → `0003_owner_and_revisions` → `0004_dm_kind` → `0005_roles_dm_reactions_pins_profile` → `0006_server_reload` → `0007_friendships` → `0008_tag_banner` → `0009_channel_join_roles` → `0010_channels_select_row_based` → `0011_submit_revisions_perm` → `0012_music` → `0013_soundpad` → `0014_server_theme` → `0015_stickers` → `0016_music_bot` → `0017_bot_settings` → `0018_manage_sounds_perm` → `0019_channel_categories` → `0020_voice_limit_move`
 
 ## Bekleyen karar
 - Masaüstü .exe imzasız: Windows 11 "Akıllı Uygulama Denetimi" açık olan bilgisayarlarda engelleniyor (egunesx'te oldu). Geçici çözüm: PWA olarak yükleme (⚙️ → Uygulama olarak yükle). Kalıcı çözüm seçenekleri (Microsoft Store, ücretsiz bireysel hesap / kod imzalama sertifikası) kullanıcıya sunuldu; **"şimdilik kalsın" dedi**, sormadan başlama.
@@ -61,14 +64,11 @@ CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'
 - Supabase'te `insert(...).select()` (RETURNING) kullanırken okuma kuralının yeni satırı görebildiğinden emin ol (kanallar için `0010` ile düzeltildi).
 - Bazı migrationlarda (politika silme) Supabase MCP kullanıcıdan onay ister; yanıt gelmezse zaman aşımı olur, kullanıcıya söyle.
 
-## Sıradaki işler (onaylı revizeler — sahip onaylı, doğrulandı, henüz `approved`)
-- **#26 Oda ayarları:** (a) ses odasına kişi sınırı (`channels.user_limit int null`, kanal ayarlarında; yöneticiler sınırsız girer). Sınır `supabase/functions/livekit-token`'da da uygulanmalı (presence sunucuda yok → LiveKit RoomService `listParticipants` ile say, ya da yalnız istemcide). (b) kanal listesinde oda adının yanında `içerideki/sınır` rozeti. (c) yeni rol yetkisi `move_members` ("Üyeleri taşı", `roles_permissions_check`'e ekle, `0018` örneği). (d) sağ tık menüsünde (`UserContextMenu.tsx`) "Taşı ›" alt menüsü → ses odaları listesi. Taşıma: yetki kontrollü RPC/tablo (ör. `voice_moves` insert, RLS `has_perm('move_members')`), hedef kullanıcı realtime ile dinleyip `voice.join(channel)` yapar; ya da Edge Function + LiveKit `moveParticipant`. Yalnız ses kanalındaki kişide göster.
-- **#27 Kanal başlıkları:** "METİN KANALLARI" / "SES KANALLARI" ve kategori başlıkları üye panelindeki gibi belirgin olsun (bkz. `styles.css` sonundaki "Revize #17" ve "Revize #25" blokları: `.member-group-head`, ikon kutucuğu, sayı rozeti, gradyan çizgi). `ChannelSidebar.tsx` (`channel-section`, `category-row`, `category-row.sub`).
-- **#28 Sağ panel:** Doğrudan mesajlar (DM modu) açıkken sağda sunucu üyeleri değil, **arkadaşlarımın etkinliği** paneli: arkadaş listesi (`friendships` accepted), çevrimiçi olanlar üstte, hangi sunucuda (şu an tek sunucu: CSN) ve ses kanalındaysa hangi kanal (presence `voice_channel_id` → kanal adı), tıklayınca profil/DM. Sunucu modunda üye paneli kalır. Panelin nerede çizildiğine bak: `Layout.tsx` (MemberList).
-- Her revizede: `in_progress` → iş → `done` + `dev_note`; `npm run build`; push; #yenilikler'e bot hesabıyla yaz.
+## Sıradaki işler
+- Onaylı revize kalmadı (#26-#28 bitti). Yeni istek gelirse `select * from revisions where status='approved'`.
 
 ## Kullanıcıyla konuşulan, bekleyen
-- Uygulama adı değişikliği düşünülüyor (CSN = "couissin"). 10 öneri verildi (Kuzenhane, Cousy, Kuzn, Cuzzo, Tayfa, Cousinverse, Kuzen.io, Cousin Club, Familia, CSN+). Kullanıcı seçince: `index.html` başlığı, `public/manifest`, `desktop/package.json` productName, sol üst logo harfi, metinler.
+- Uygulama adı değişikliği düşünülüyor (CSN = "couissin"). 10 öneri verildi (Kuzenhane, Cousy, Kuzn, Cuzzo, Tayfa, Cousinverse, Kuzen.io, Cousin Club, Familia, CSN+). Kullanıcı "isme daha sonra karar vereceğim" dedi: **sormadan başlama**. Seçince: `index.html` başlığı, `public/manifest`, `desktop/package.json` productName, sol üst logo harfi, metinler.
 
 ## Sıradaki adaylar
 - Müzik botu canlıda denenmeli (iki kişiyle: sıra, tekrar, konsol). Bot hesabı `b0700000-0000-4000-8000-00000000b070` (`src/lib/bots.ts`)

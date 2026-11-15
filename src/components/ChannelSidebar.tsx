@@ -94,6 +94,15 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
                 <Icon name="speaker" size={18} className="channel-icon" />
                 <span className="channel-name">{c.name}</span>
                 {c.allowed_roles?.length || !canJoin(c) ? <Icon name="lock" size={13} className="channel-lock" /> : null}
+                {(c.user_limit || inside.length > 0) && (
+                  <span
+                    className={`room-count${c.user_limit && inside.length >= c.user_limit ? ' full' : ''}`}
+                    title={c.user_limit ? `${inside.length} kişi içeride · ${c.user_limit} kişilik` : `${inside.length} kişi içeride`}
+                  >
+                    <Icon name="users" size={11} />
+                    {inside.length}{c.user_limit ? `/${c.user_limit}` : ''}
+                  </span>
+                )}
                 {can('manage_channels') && (
                   <span className="channel-gear" title="Kanal ayarları" onClick={(e) => { e.stopPropagation(); setChSettings(c.id) }}><Icon name="gear" size={14} /></span>
                 )}
@@ -156,8 +165,12 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
           const loose = list.filter((c) => !c.category_id || !known.has(c.category_id))
           return (
             <div key={kind} className="channel-section">
-              <div className="category-row">
-                <div className="category">{kind === 'text' ? 'Metin kanalları' : 'Ses kanalları'}</div>
+              <div className="category-row section-head">
+                <div className="category section-title">
+                  <span className="section-icon"><Icon name={kind === 'text' ? 'hash' : 'speaker'} size={13} /></span>
+                  <span className="section-name">{kind === 'text' ? 'Metin kanalları' : 'Ses kanalları'}</span>
+                  <span className="section-count">{list.length}</span>
+                </div>
                 {can('manage_channels') && (
                   <>
                     <button className="category-add" title="Kategori oluştur" onClick={() => setCatModal({ kind })}><Icon name="folderPlus" size={15} /></button>
@@ -173,7 +186,9 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
                   <div key={g.id} className="channel-category">
                     <div className="category-row sub">
                       <button className="category toggle" onClick={() => toggleCat(g.id)} title={isCollapsed ? 'Aç' : 'Daralt'}>
-                        <Icon name={isCollapsed ? 'chevronRight' : 'chevronDown'} size={12} /> {g.name}
+                        <Icon name={isCollapsed ? 'chevronRight' : 'chevronDown'} size={12} />
+                        <span className="cat-name">{g.name}</span>
+                        <span className="cat-count">{inCat.length}</span>
                       </button>
                       {can('manage_channels') && (
                         <>

@@ -92,6 +92,20 @@ Deno.serve(async (req) => {
   }
 
   const now = Math.floor(Date.now() / 1000)
+
+  // Revize #26: oda kişi sınırı (yöneticiler sınırsız; yetkili biri tarafından taşınan kişi de sınıra takılmaz)
+  if (channel.kind === 'voice' && channel.user_limit && member.role !== 'admin') {
+    const since = new Date(Date.now() - 60_000).toISOString()
+    const { data: moved } = await admin
+      .from('voice_moves').select('id').eq('target', user.id).eq('channel_id', channel.id).gte('created_at', since).limit(1)
+    if (!moved?.length) {
+      const inside = await countParticipants(livekitUrl, apiKey, apiSecret, channel.id, user.id)
+      if (inside !== null && inside >= channel.user_limit) {
+        return json({ error: `Bu oda dolu (${inside}/${channel.user_limit}).` }, 403)
+      }
+    }
+  }
+
   const token = await new SignJWT({
     name: profile?.display_name ?? 'Üye',
     metadata: JSON.stringify({ role: member.role }),
@@ -113,3 +127,28 @@ Deno.serve(async (req) => {
 
   return json({ token, url: livekitUrl })
 })
+
+/** Odadaki kişi sayısı (kendisi hariç). LiveKit'e ulaşılamazsa null: sınır uygulanmaz. */
+async function countParticipants(wsUrl: string, apiKey: string, apiSecret: string, room: string, self: string) {
+  try {
+    const now = Math.floor(Date.now() / 1000)
+    const adminToken = await new SignJWT({ video: { room, roomAdmin: true } })
+      .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+      .setIssuer(apiKey)
+      .setNotBefore(now - 10)
+      .setExpirationTime(now + 60)
+      .sign(new TextEncoder().encode(apiSecret))
+    const httpUrl = wsUrl.replace(/^ws/, 'http').replace(/\/$/, '')
+    const res = await fetch(`${httpUrl}/twirp/livekit.RoomService/ListParticipants`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ room }),
+    })
+    if (res.status === 404) return 0 // oda henüz yok
+    if (!res.ok) return null
+    const body = (await res.json()) as { participants?: { identity: string }[] }
+    return (body.participants ?? []).filter((p) => p.identity !== self).length
+  } catch {
+    return null
+  }
+}

@@ -662,6 +662,7 @@ const PERMS: { id: Permission; label: string; desc: string }[] = [
   { id: 'mention_everyone', label: '@herkes kullan', desc: '@herkes yazarak tüm sunucuya bildirim gönderebilir.' },
   { id: 'submit_revisions', label: 'Revize verebilir', desc: 'Revizeler bölümünü görür ve değişiklik isteği yazabilir. Onay yine yalnız sunucu sahibindedir.' },
   { id: 'manage_sounds', label: "Soundpad'e ses ekleyebilir", desc: "Soundpad'e yeni ses yükleyebilir ve kendi eklediği sesleri silebilir." },
+  { id: 'move_members', label: 'Üyeleri taşı', desc: 'Ses kanalındaki birine sağ tıklayıp Taşı ile başka bir ses odasına geçirebilir (oda sınırına takılmaz).' },
 ]
 const ROLE_COLORS = ['#e74c3c', '#e67e22', '#f1c40f', '#2ecc71', '#1abc9c', '#3498db', '#6c5ce7', '#9b59b6', '#e84393', '#95a5a6']
 

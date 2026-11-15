@@ -1247,3 +1247,65 @@ a { color: var(--accent-2); }
 .category-empty { font-size: 12px; color: var(--text-3); padding: 4px 12px 6px; }
 .settings-nav-extra { margin-top: 14px !important; padding-top: 10px; border-top: 1px solid var(--line); }
 .settings-nav-extra button.accent { color: #c7b8ff; }
+
+/* ───────── Revize #27: belirgin kanal başlıkları (üye paneli gibi) ───────── */
+.category-row.section-head { padding: 0 8px 0 2px; margin-top: 10px; }
+.channel-section:first-child .category-row.section-head { margin-top: 4px; }
+.category.section-title {
+  display: flex; align-items: center; gap: 8px; padding: 10px 6px 7px;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.1em; color: var(--text-2);
+}
+.section-icon { width: 22px; height: 22px; border-radius: 7px; display: grid; place-items: center; flex: none; background: var(--accent-soft); color: var(--accent); }
+.section-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.section-count, .cat-count {
+  order: 2; min-width: 20px; text-align: center; padding: 1px 6px; border-radius: 999px; flex: none;
+  background: var(--bg-3); border: 1px solid var(--line); color: var(--text-2); font-size: 10.5px; letter-spacing: 0; font-weight: 700;
+}
+.category.section-title::after, .category-row.sub .category.toggle::after {
+  content: ''; flex: 1; min-width: 8px; height: 1px; order: 1; background: linear-gradient(90deg, var(--line-2), transparent);
+}
+.category-row.section-head .category-add { padding-top: 6px; }
+.category-row.sub .category.toggle { gap: 6px; font-size: 10.5px; font-weight: 800; letter-spacing: 0.09em; color: var(--text-3); padding: 10px 6px 5px; }
+.category-row.sub .category.toggle svg { flex: none; color: var(--accent); opacity: 0.85; }
+.cat-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cat-count { font-size: 10px; padding: 0 5px; }
+.channel-category { border-left: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line)); margin-left: 8px; }
+
+/* Revize #26: oda kişi sayısı rozeti */
+.room-count {
+  display: inline-flex; align-items: center; gap: 3px; flex: none; margin-left: auto; padding: 1px 6px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-2);
+  background: var(--bg-3); border: 1px solid var(--line);
+}
+.room-count + .channel-gear { margin-left: 4px; }
+.room-count.full { color: #fff; background: rgba(240, 71, 90, 0.75); border-color: transparent; }
+.limit-row { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.limit-row input[type='range'] { flex: 1; }
+.limit-value { min-width: 28px; text-align: center; font-weight: 800; font-variant-numeric: tabular-nums; padding: 2px 6px; border-radius: 8px; background: var(--bg-3); border: 1px solid var(--line); }
+.context-move { display: flex; align-items: center; gap: 8px; }
+.context-move .muted { margin-left: auto; padding-left: 10px; font-variant-numeric: tabular-nums; }
+.context-move:disabled { opacity: 0.55; cursor: default; }
+
+/* ───────── Revize #28: arkadaş etkinliği paneli (DM modu) ───────── */
+.friend-activity {
+  position: relative; margin-bottom: 7px; padding: 9px 10px; border-radius: 12px; cursor: pointer;
+  background: linear-gradient(135deg, var(--bg-3) 0%, var(--bg-2) 100%); border: 1px solid var(--line);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 4px 12px rgba(0, 0, 0, 0.18);
+  transition: transform 0.15s var(--ease), border-color 0.15s;
+}
+.friend-activity:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+.friend-activity.in-voice { border-color: rgba(35, 196, 126, 0.35); }
+.friend-activity.offline { opacity: 0.5; box-shadow: none; background: var(--bg-2); padding: 7px 10px; }
+.friend-activity-top { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.friend-activity .member-text { flex: 1; min-width: 0; }
+.friend-activity .status-dot { border-color: var(--bg-3); }
+.friend-activity-where { display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 6px 8px; border-radius: 9px; background: var(--bg-1); border: 1px solid var(--line); }
+.fa-server { width: 24px; height: 24px; border-radius: 8px; flex: none; display: grid; place-items: center; background: var(--grad); color: #fff; font-size: 11px; font-weight: 800; }
+.fa-where-text { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 12px; line-height: 1.3; }
+.fa-where-text strong { font-size: 11px; letter-spacing: 0.04em; }
+.fa-where-text > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fa-voice { display: inline-flex; align-items: center; gap: 4px; color: var(--green); font-weight: 600; }
+.fa-voice .live-tag { margin-left: 4px; }
+.fa-join { flex: none; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; color: #fff; background: var(--grad); }
+.fa-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 28px 12px; color: var(--text-2); }
+.fa-empty svg { color: var(--accent); }

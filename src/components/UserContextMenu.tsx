@@ -11,17 +11,18 @@ import { STATUS_OPTIONS, statusLabel } from '../lib/status'
 
 /** Kullanıcıya sağ tıklayınca açılan menü: profil, mesaj, arkadaşlık, ses seviyesi, hızlı rol verme (yönetici) */
 export default function UserContextMenu() {
-  const { userMenu, openUserMenu, profiles, userId, myRole, roles, memberRoles, members, openProfile, openDm, friendState, presence, myChosenStatus, setMyStatus } = useApp()
+  const { userMenu, openUserMenu, profiles, userId, myRole, roles, memberRoles, members, openProfile, openDm, friendState, presence, myChosenStatus, setMyStatus, can, channels } = useApp()
   const voice = useVoice()
   const musicSnap = useMusic()
   const ref = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ left: number; top: number }>({ left: 0, top: 0 })
   const [error, setError] = useState<string | null>(null)
-  const [sub, setSub] = useState<'roles' | 'status' | null>(null)
+  const [sub, setSub] = useState<'roles' | 'status' | 'move' | null>(null)
   const [subPos, setSubPos] = useState<{ left: number; top: number }>({ left: 0, top: 0 })
   const [roleQuery, setRoleQuery] = useState('')
   const rolesItem = useRef<HTMLButtonElement>(null)
   const statusItem = useRef<HTMLButtonElement>(null)
+  const moveItem = useRef<HTMLButtonElement>(null)
   const subRef = useRef<HTMLDivElement>(null)
   const closeTimer = useRef<number | null>(null)
 
@@ -33,7 +34,7 @@ export default function UserContextMenu() {
     cancelCloseSub()
     closeTimer.current = window.setTimeout(() => setSub(null), 220)
   }
-  function openSub(kind: 'roles' | 'status' = 'roles') {
+  function openSub(kind: 'roles' | 'status' | 'move' = 'roles') {
     cancelCloseSub()
     setSub(kind)
   }
@@ -73,7 +74,7 @@ export default function UserContextMenu() {
 
   // Alt paneli "Roller" satırının yanına yerleştir (sağa sığmazsa sola)
   useLayoutEffect(() => {
-    const trigger = sub === 'status' ? statusItem.current : rolesItem.current
+    const trigger = sub === 'status' ? statusItem.current : sub === 'move' ? moveItem.current : rolesItem.current
     if (!sub || !trigger || !subRef.current || !ref.current) return
     const menu = ref.current.getBoundingClientRect()
     const item = trigger.getBoundingClientRect()
@@ -93,6 +94,16 @@ export default function UserContextMenu() {
   const fs = friendState(uid)
   const inMyCall = !isMe && !!voice.channelId && presence[uid]?.voice_channel_id === voice.channelId
   const volume = voice.settings.volumes[uid] ?? 1
+  // Revize #26: ses kanalındaki birini başka odaya taşı (yetki: move_members)
+  const voiceChannels = channels.filter((c) => c.kind === 'voice')
+  const targetVoice = presence[uid]?.voice_channel_id
+  const canMove = !isMe && !bot && isMember && can('move_members') && voiceChannels.some((c) => c.id === targetVoice)
+  async function moveTo(channelId: string) {
+    setError(null)
+    const { error } = await supabase.from('voice_moves').insert({ target: uid, channel_id: channelId, moved_by: userId })
+    if (error) setError(error.message)
+    else close()
+  }
   const has = (rid: string) => memberRoles.some((m) => m.user_id === uid && m.role_id === rid)
 
   async function toggleRole(rid: string) {
@@ -168,6 +179,39 @@ export default function UserContextMenu() {
           <div className="context-sep" />
           <div className="context-label">Kullanıcı ses seviyesi · %{Math.round(volume * 100)}</div>
           <input className="context-range" type="range" min={0} max={2} step={0.05} value={volume} onChange={(e) => voice.setVolume(uid, Number(e.target.value))} />
+        </>
+      )}
+
+      {canMove && (
+        <>
+          <div className="context-sep" />
+          <button
+            ref={moveItem}
+            className={`context-sub-trigger${sub === 'move' ? ' open' : ''}`}
+            onMouseEnter={() => openSub('move')}
+            onMouseLeave={scheduleCloseSub}
+            onClick={() => openSub('move')}
+          >
+            <Icon name="speaker" size={16} />
+            <span className="context-role-name">Taşı</span>
+            <span className="context-sub-arrow">›</span>
+          </button>
+          {sub === 'move' && (
+            <div ref={subRef} className="context-menu context-submenu" style={subPos} onMouseEnter={cancelCloseSub} onMouseLeave={scheduleCloseSub}>
+              <div className="context-label">Ses odasına taşı</div>
+              {voiceChannels.map((c) => {
+                const n = Object.values(presence).filter((x) => x.voice_channel_id === c.id).length
+                const here = c.id === targetVoice
+                return (
+                  <button key={c.id} className="context-move" disabled={here} onClick={() => moveTo(c.id)}>
+                    <Icon name="speaker" size={14} />
+                    <span className="context-role-name">{c.name}</span>
+                    <span className="muted small">{here ? 'şu an burada' : c.user_limit ? `${n}/${c.user_limit}` : n || ''}</span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </>
       )}
 

@@ -13,6 +13,7 @@ export default function ChannelSettingsModal({ channelId, onClose }: { channelId
   const [topic, setTopic] = useState(ch?.topic ?? '')
   const [view, setView] = useState<string[]>(ch?.allowed_roles ?? [])
   const [join, setJoin] = useState<string[]>(ch?.join_roles ?? [])
+  const [limit, setLimit] = useState<number>(ch?.user_limit ?? 0)
   const [categoryId, setCategoryId] = useState<string | null>(ch?.category_id ?? null)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
@@ -41,6 +42,7 @@ export default function ChannelSettingsModal({ channelId, onClose }: { channelId
         allowed_roles: view.length ? view : null,
         join_roles: joinClean.length ? joinClean : null,
         category_id: categoryId,
+        ...(c.kind === 'voice' ? { user_limit: limit > 0 ? Math.min(99, Math.round(limit)) : null } : {}),
       })
       .eq('id', c.id)
     if (error) setError(error.message)
@@ -100,6 +102,16 @@ export default function ChannelSettingsModal({ channelId, onClose }: { channelId
           <label>
             Konu <span className="hint">isteğe bağlı</span>
             <input value={topic} onChange={(e) => setTopic(e.target.value)} maxLength={200} placeholder="Bu kanal ne için?" />
+          </label>
+        )}
+
+        {isVoice && (
+          <label>
+            Kişi sınırı <span className="hint">{limit > 0 ? `en fazla ${limit} kişi · yöneticiler sınırsız girer` : 'sınırsız'}</span>
+            <div className="limit-row">
+              <input type="range" min={0} max={99} step={1} value={limit} onChange={(e) => setLimit(Number(e.target.value))} />
+              <span className="limit-value">{limit > 0 ? limit : '∞'}</span>
+            </div>
           </label>
         )}
 
