@@ -31,10 +31,13 @@ export default function SoundpadButton({ variant }: { variant: 'round' | 'pill' 
 }
 
 function SoundpadGrid() {
-  const { userId, myRole, profiles } = useApp()
+  const { userId, myRole, profiles, can } = useApp()
   const voice = useVoice()
   const snap = useSoundpad()
   const isAdmin = myRole === 'admin'
+  // Ses ekleme: yöneticiler + "Soundpad'e ses ekleyebilir" yetkili roller
+  const canAdd = isAdmin || can('manage_sounds')
+  const canDelete = (s: SoundItem) => isAdmin || (canAdd && s.created_by === userId)
   const [adding, setAdding] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [flash, setFlash] = useState<string | null>(null)
@@ -64,20 +67,20 @@ function SoundpadGrid() {
     <div className="soundpad">
       <div className="soundpad-head">
         <span className="popover-title">Soundpad</span>
-        {isAdmin && !adding && (
+        {canAdd && !adding && (
           <button className="btn ghost small" onClick={() => setAdding(true)}>
             + Ses ekle
           </button>
         )}
       </div>
 
-      {adding && isAdmin ? (
+      {adding && canAdd ? (
         <AddSoundForm userId={userId} onDone={() => setAdding(false)} />
       ) : (
         <>
           {!voice.channelId && <div className="small muted">Ses çalmak için bir ses kanalına katıl.</div>}
           {snap.sounds.length === 0 ? (
-            <div className="small muted">{isAdmin ? 'Henüz ses yok. "+ Ses ekle" ile yükle.' : 'Henüz ses yok. Yöneticiler ses ekleyebilir.'}</div>
+            <div className="small muted">{canAdd ? 'Henüz ses yok. "+ Ses ekle" ile yükle.' : 'Henüz ses yok. Yetkili kişiler ses ekleyebilir.'}</div>
           ) : (
             <div className="soundpad-grid">
               {snap.sounds.map((s) => (
@@ -86,7 +89,7 @@ function SoundpadGrid() {
                     <span className="sound-emoji">{s.emoji}</span>
                     <span className="sound-name">{s.name}</span>
                   </button>
-                  {isAdmin && (
+                  {canDelete(s) && (
                     <button className="sound-del" onClick={() => remove(s)} title="Sil">
                       <Icon name="x" size={12} />
                     </button>

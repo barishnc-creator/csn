@@ -16,7 +16,7 @@ export interface Profile {
   bot_presence?: UserStatus | null
 }
 
-export type Permission = 'manage_channels' | 'kick_members' | 'create_invites' | 'manage_messages' | 'mention_everyone' | 'submit_revisions'
+export type Permission = 'manage_channels' | 'kick_members' | 'create_invites' | 'manage_messages' | 'mention_everyone' | 'submit_revisions' | 'manage_sounds'
 
 export interface CustomRole {
   id: string
