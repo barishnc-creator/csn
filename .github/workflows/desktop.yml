@@ -26,6 +26,16 @@ jobs:
         env:
           # İmzalama sertifikası yok; otomatik sertifika arama kapalı
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      # Soundpad genel kısayolları: tuş dinleme modülü pakette mi ve paketlenmiş uygulamada yükleniyor mu
+      - name: Genel kısayol modülünü doğrula
+        shell: pwsh
+        run: |
+          $unpacked = "dist/win-unpacked/resources/app.asar.unpacked/node_modules/uiohook-napi"
+          if (-not (Test-Path "$unpacked/prebuilds/win32-x64")) { Get-ChildItem -Recurse dist/win-unpacked/resources | Select-Object -First 40; throw "uiohook-napi pakete girmemiş" }
+          $env:ELECTRON_RUN_AS_NODE = "1"
+          $asar = (Resolve-Path "dist/win-unpacked/resources/app.asar").Path
+          & "dist/win-unpacked/CSN.exe" -e "const h=require(process.argv[1]+'/node_modules/uiohook-napi'); if(!h.uIOhook||!h.UiohookKey) process.exit(2); console.log('uiohook OK', Object.keys(h.UiohookKey).length)" $asar
+          if ($LASTEXITCODE -ne 0) { throw "uiohook-napi paketlenmiş uygulamada yüklenemedi ($LASTEXITCODE)" }
       - uses: actions/upload-artifact@v4
         with:
           name: CSN-Windows
