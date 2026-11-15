@@ -71,7 +71,7 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
               <Icon name="plusCircle" size={16} /> Kanalları yönet
             </button>
           )}
-          {myRole === 'admin' && (
+          {can('submit_revisions') && (
             <button onClick={() => { setMenu(false); onOpenSettings('revisions') }}>
               <Icon name="file" size={16} /> Revizeler
             </button>

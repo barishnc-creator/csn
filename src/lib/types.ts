@@ -14,7 +14,7 @@ export interface Profile {
   tag: number
 }
 
-export type Permission = 'manage_channels' | 'kick_members' | 'create_invites' | 'manage_messages' | 'mention_everyone'
+export type Permission = 'manage_channels' | 'kick_members' | 'create_invites' | 'manage_messages' | 'mention_everyone' | 'submit_revisions'
 
 export interface CustomRole {
   id: string

@@ -70,7 +70,7 @@ export default function RevisionsTab() {
   return (
     <div className="settings-page">
       <p className="muted">
-        CSN'de değişmesini ya da eklenmesini istediğin şeyleri buraya yaz. Bu alanı yalnız yöneticiler görür.
+        CSN'de değişmesini ya da eklenmesini istediğin şeyleri buraya yaz. Bu alanı yalnız yöneticiler ve "Revize verebilir" yetkili roller görür.
         Bir revize ancak sunucu sahibi onaylayınca yapılmaya başlanır.
       </p>
 

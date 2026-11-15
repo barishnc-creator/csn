@@ -38,7 +38,7 @@ export default function SettingsModal({ initialTab, onClose }: { initialTab: Set
     channels: can('manage_channels'),
     roles: isAdmin,
     members: isAdmin || can('kick_members'),
-    revisions: isAdmin,
+    revisions: can('submit_revisions'),
   }
 
   function go(t: SettingsTab) {
@@ -625,6 +625,7 @@ const PERMS: { id: Permission; label: string; desc: string }[] = [
   { id: 'create_invites', label: 'Davet oluştur', desc: 'Yeni üyeler için davet kodu üretebilir.' },
   { id: 'kick_members', label: 'Üye at', desc: '"Üye" rolündeki kişileri sunucudan çıkarabilir.' },
   { id: 'mention_everyone', label: '@herkes kullan', desc: '@herkes yazarak tüm sunucuya bildirim gönderebilir.' },
+  { id: 'submit_revisions', label: 'Revize verebilir', desc: 'Revizeler bölümünü görür ve değişiklik isteği yazabilir. Onay yine yalnız sunucu sahibindedir.' },
 ]
 const ROLE_COLORS = ['#e74c3c', '#e67e22', '#f1c40f', '#2ecc71', '#1abc9c', '#3498db', '#6c5ce7', '#9b59b6', '#e84393', '#95a5a6']
 
