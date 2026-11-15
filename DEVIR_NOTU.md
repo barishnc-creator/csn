@@ -54,6 +54,12 @@ CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'
 - Supabase'te `insert(...).select()` (RETURNING) kullanırken okuma kuralının yeni satırı görebildiğinden emin ol (kanallar için `0010` ile düzeltildi).
 - Bazı migrationlarda (politika silme) Supabase MCP kullanıcıdan onay ister; yanıt gelmezse zaman aşımı olur, kullanıcıya söyle.
 
+## Sıradaki işler (onaylı revizeler, sırayla yap)
+- **#17** Sunucu üyeleri paneli: başlık BÜYÜK HARF, üyeler daha estetik kutucuklar içinde (`MemberList.tsx` + `styles.css`)
+- **#20 + #22** Müzik botu (Discord botu mantığı): `0016` ile "CSN Müzik" üyesi zaten var (`src/lib/bots.ts`), sağda görünüyor, sesli odada en altta, rol verilebiliyor, DM/arkadaş düğmeleri gizli (sağ tık + profil kartı). Eksik: yöneticiler botun **adını, resmini, aktiflik durumunu** düzenleyebilsin (ör. Ayarlar'da "Müzik botu" bölümü; bot profilini güncellemek için RLS'te is_admin'e izin veren politika ya da security definer RPC gerekir). Arkadaşlık isteği/DM'yi sunucu tarafında da engelle (friendships insert ve open_dm'de bot id reddi).
+- **#21** Masaüstü (Electron, `desktop/`): Alt+Enter (ve F11) tam ekran; üstteki beyaz menü çubuğu kalksın (`autoHideMenuBar`/`Menu.setApplicationMenu(null)`). Sonra `desktop/package.json` sürümünü artır, kullanıcıya Actions → "Masaüstü (Windows)" çalıştırmasını söyle.
+- **#23** Genel (metin) kanala sesli mesaj: mikrofonla kayıt (MediaRecorder, webm/ogg), `files` kovasına yükle, mesajda ek olarak oynatıcıyla göster.
+
 ## Sıradaki adaylar
 - Müzik botu canlıda denenmeli (iki kişiyle: sıra, tekrar, konsol). Bot hesabı `b0700000-0000-4000-8000-00000000b070` (`src/lib/bots.ts`)
 - Başka yöneticinin yüklediği sticker silinince dosya depoda kalıyor (soundpad ile aynı sınır)
