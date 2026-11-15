@@ -34,8 +34,10 @@ jobs:
           if (-not (Test-Path "$unpacked/prebuilds/win32-x64")) { Get-ChildItem -Recurse dist/win-unpacked/resources | Select-Object -First 40; throw "uiohook-napi pakete girmemiş" }
           $env:ELECTRON_RUN_AS_NODE = "1"
           $asar = (Resolve-Path "dist/win-unpacked/resources/app.asar").Path
-          & "dist/win-unpacked/CSN.exe" -e "const h=require(process.argv[1]+'/node_modules/uiohook-napi'); if(!h.uIOhook||!h.UiohookKey) process.exit(2); console.log('uiohook OK', Object.keys(h.UiohookKey).length)" $asar
-          if ($LASTEXITCODE -ne 0) { throw "uiohook-napi paketlenmiş uygulamada yüklenemedi ($LASTEXITCODE)" }
+          # CSN.exe pencereli uygulama: çıkış kodu güvenilmez, çıktıya bakılır (boru hattı bitmesini bekletir)
+          $out = & "dist/win-unpacked/CSN.exe" -e "const h=require(process.argv[1]+'/node_modules/uiohook-napi'); console.log(h.uIOhook && h.UiohookKey ? 'uiohook OK ' + Object.keys(h.UiohookKey).length : 'uiohook EKSIK')" $asar 2>&1 | Out-String
+          Write-Output $out
+          if ($out -notmatch 'uiohook OK') { throw "uiohook-napi paketlenmiş uygulamada yüklenemedi" }
       - uses: actions/upload-artifact@v4
         with:
           name: CSN-Windows
