@@ -497,12 +497,19 @@ function ChannelsTab() {
     const clean = kind === 'text' ? name.trim().toLocaleLowerCase('tr').replace(/\s+/g, '-') : name.trim()
     if (!clean) return
     const position = Math.max(-1, ...list.filter((c) => c.kind === kind).map((c) => c.position)) + 1
-    const { data, error } = await supabase.from('channels').insert({ name: clean, kind, position }).select('id').single()
-    if (error) setError(error.message)
-    else {
-      setName('')
-      if (data) setEditing(data.id) // yeni kanalın ayarlarını hemen aç
-    }
+    // Not: insert sonrası .select() kullanılmaz; okuma kuralı yeni satırı aynı sorguda göremiyor
+    const { error } = await supabase.from('channels').insert({ name: clean, kind, position })
+    if (error) return setError(error.message)
+    setName('')
+    const { data } = await supabase
+      .from('channels')
+      .select('id')
+      .eq('name', clean)
+      .eq('kind', kind)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (data) setEditing(data.id) // yeni kanalın ayarlarını hemen aç
   }
 
   async function update(c: Channel, patch: Partial<Channel>) {

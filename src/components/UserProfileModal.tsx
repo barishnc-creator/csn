@@ -9,7 +9,7 @@ import { FriendButton } from './FriendsView'
 import { acceptFriend, sendFriendRequest } from '../lib/friends'
 
 const baseRole: Record<Role, string> = { admin: 'Yönetici', mod: 'Moderatör', member: 'Üye' }
-const statusText = { online: 'Çevrimiçi', idle: 'Boşta', dnd: 'Rahatsız etmeyin', offline: 'Çevrimdışı' } as const
+const statusText = { online: 'Çevrimiçi', idle: 'Dışarıda', dnd: 'Rahatsız etmeyin', invisible: 'Çevrimdışı görünüyor', offline: 'Çevrimdışı' } as const
 
 export default function UserProfileModal({ userId, onClose, onEditProfile }: { userId: string; onClose: () => void; onEditProfile: () => void }) {
   const { profiles, members, presence, rolesOf, userId: me, openDm, channels, friendState } = useApp()
@@ -104,7 +104,7 @@ export function ProfileCard({
 }: {
   profile: Profile | undefined | null
   userId: string
-  status?: 'online' | 'idle' | 'dnd' | 'offline'
+  status?: 'online' | 'idle' | 'dnd' | 'invisible' | 'offline'
   footer?: React.ReactNode
 }) {
   const banner = profile?.banner_color ?? colorFor(userId)

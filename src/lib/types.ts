@@ -1,6 +1,6 @@
 export type Role = 'admin' | 'mod' | 'member'
 export type ChannelKind = 'text' | 'voice' | 'dm'
-export type UserStatus = 'online' | 'idle' | 'dnd'
+export type UserStatus = 'online' | 'idle' | 'dnd' | 'invisible'
 
 export interface Profile {
   id: string

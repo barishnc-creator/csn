@@ -6,12 +6,13 @@ import Icon from './Icon'
 const baseLabel = { admin: 'Yöneticiler', mod: 'Moderatörler', member: 'Çevrimiçi' } as const
 
 export default function MemberList() {
-  const { members, profiles, presence, roles, rolesOf, nameColor, openProfile, openUserMenu } = useApp()
+  const { members, profiles, presence, roles, rolesOf, nameColor, openProfile, openUserMenu, userId } = useApp()
+  const isOn = (uid: string) => !!presence[uid] && (presence[uid].status !== 'invisible' || uid === userId)
   const name = (id: string) => profiles[id]?.display_name ?? ''
   const byName = (a: Member, b: Member) => name(a.user_id).localeCompare(name(b.user_id), 'tr')
 
-  const online = members.filter((m) => presence[m.user_id])
-  const offline = members.filter((m) => !presence[m.user_id]).sort(byName)
+  const online = members.filter((m) => isOn(m.user_id))
+  const offline = members.filter((m) => !isOn(m.user_id)).sort(byName)
 
   // Gruplama: ayrı gösterilen en üst özel rol → yoksa temel rol
   const groups: { key: string; label: string; color?: string; list: Member[] }[] = []

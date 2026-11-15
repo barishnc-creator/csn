@@ -34,7 +34,7 @@ export default function Avatar({ profile, userId, size = 40, status, speaking }:
       title={name}
     >
       {url ? <img src={url} alt="" /> : initials(name)}
-      {status && <span className={`status-dot ${status}`} style={{ width: size * 0.32, height: size * 0.32 }} />}
+      {status && <span className={`status-dot ${status === 'invisible' ? 'offline' : status}`} style={{ width: size * 0.32, height: size * 0.32 }} />}
     </div>
   )
 }

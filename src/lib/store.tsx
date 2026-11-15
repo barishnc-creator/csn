@@ -41,6 +41,8 @@ interface AppState {
   friendState: (uid: string) => { state: 'none' | 'friends' | 'outgoing' | 'incoming'; id?: number }
   presence: Record<string, PresenceState>
   myStatus: UserStatus
+  /** Kullanıcının elle seçtiği durum (otomatik 'boşta' hariç) */
+  myChosenStatus: UserStatus
   setMyStatus: (s: UserStatus) => void
   updatePresence: (patch: Partial<PresenceState>) => void
   refreshProfiles: () => Promise<void>
@@ -113,7 +115,10 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
   const [userMenu, setUserMenu] = useState<{ uid: string; x: number; y: number } | null>(null)
   const [reloadNotice, setReloadNotice] = useState<ReloadNotice | null>(null)
   const reloadVersion = useRef<number | null>(null)
-  const [myStatus, setMyStatusState] = useState<UserStatus>(() => (readLS(STATUS_KEY) === 'dnd' ? 'dnd' : 'online'))
+  const [myStatus, setMyStatusState] = useState<UserStatus>(() => {
+    const s = readLS(STATUS_KEY)
+    return s === 'dnd' || s === 'idle' || s === 'invisible' ? s : 'online'
+  })
   const [idle, setIdle] = useState(false)
 
   const presenceRef = useRef<RealtimeChannel | null>(null)
@@ -248,7 +253,10 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       for (const [key, metas] of Object.entries(state)) {
         // Aynı kişi birden fazla sekmede: ses kanalında olanı tercih et
         const best = metas.find((m) => m.voice_channel_id) ?? metas[metas.length - 1]
-        if (best) next[key] = { ...best, user_id: key }
+        if (!best) continue
+        // Görünmez: başkalarına çevrimdışı görünür (seste ise yalnız ses kanalında görünür)
+        if (best.status === 'invisible' && key !== userId && !best.voice_channel_id) continue
+        next[key] = { ...best, user_id: key }
       }
       setPresence(next)
     }
@@ -285,7 +293,8 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
     }
   }, [])
 
-  const effectiveStatus: UserStatus = myStatus === 'dnd' ? 'dnd' : idle ? 'idle' : 'online'
+  // Elle seçilen durum geçerli; yalnız 'Çevrimiçi'de hareketsizlik otomatik 'Boşta' yapar
+  const effectiveStatus: UserStatus = myStatus === 'online' && idle ? 'idle' : myStatus
   useEffect(() => {
     updatePresence({ status: effectiveStatus })
   }, [effectiveStatus, updatePresence])
@@ -348,6 +357,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       },
       presence,
       myStatus: effectiveStatus,
+      myChosenStatus: myStatus,
       setMyStatus,
       updatePresence,
       refreshProfiles,
@@ -370,7 +380,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       dismissReload: () => setReloadNotice(null),
     }
   }, [
-    userId, profiles, members, channels, roles, memberRoles, dmMembers, friendships, presence, effectiveStatus,
+    userId, profiles, members, channels, roles, memberRoles, dmMembers, friendships, presence, effectiveStatus, myStatus,
     setMyStatus, updatePresence, refreshProfiles, mode, selectedId, select, openDm, profileOf, userMenu, reloadNotice,
   ])
 

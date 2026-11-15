@@ -4,9 +4,10 @@ import { acceptFriend, removeFriendship, sendFriendRequest } from '../lib/friend
 import Avatar from './Avatar'
 import Icon from './Icon'
 import { formatTag } from '../lib/format'
+import type { UserStatus } from '../lib/types'
 
 type Tab = 'online' | 'all' | 'pending' | 'add'
-const statusText = { online: 'Çevrimiçi', idle: 'Boşta', dnd: 'Rahatsız etmeyin' } as const
+const statusText = { online: 'Çevrimiçi', idle: 'Dışarıda', dnd: 'Rahatsız etmeyin', invisible: 'Çevrimdışı' } as const
 
 /** Arkadaşlar: istek gönder, kabul et / reddet, arkadaş listesi */
 export default function FriendsView() {
@@ -32,7 +33,7 @@ export default function FriendsView() {
     }
   }
 
-  const onlineFriends = friends.filter((id) => presence[id])
+  const onlineFriends = friends.filter((id) => presence[id] && presence[id].status !== 'invisible')
   const list = (tab === 'online' ? onlineFriends : friends).filter(match).sort(byName)
   const candidates = members.map((m) => m.user_id).filter((id) => id !== userId && match(id)).sort(byName)
 
@@ -136,7 +137,7 @@ export function FriendButton({ state, onSend, onAccept }: { state: 'none' | 'fri
   return <button className="btn primary small" onClick={onSend}><Icon name="userPlus" size={15} /> İstek gönder</button>
 }
 
-function Row({ id, sub, onOpen, color, status, children }: { id: string; sub: string; onOpen: () => void; color?: string; status?: 'online' | 'idle' | 'dnd'; children: React.ReactNode }) {
+function Row({ id, sub, onOpen, color, status, children }: { id: string; sub: string; onOpen: () => void; color?: string; status?: UserStatus; children: React.ReactNode }) {
   const { profiles, openUserMenu } = useApp()
   return (
     <div className="friend-row" onClick={onOpen} onContextMenu={(e) => { e.preventDefault(); openUserMenu(id, e.clientX, e.clientY) }}>

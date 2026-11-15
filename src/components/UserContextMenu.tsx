@@ -5,18 +5,20 @@ import { formatTag } from '../lib/format'
 import { acceptFriend, sendFriendRequest } from '../lib/friends'
 import { useVoice } from '../voice/VoiceContext'
 import Icon from './Icon'
+import { STATUS_OPTIONS, statusLabel } from '../lib/status'
 
 /** Kullanıcıya sağ tıklayınca açılan menü: profil, mesaj, arkadaşlık, ses seviyesi, hızlı rol verme (yönetici) */
 export default function UserContextMenu() {
-  const { userMenu, openUserMenu, profiles, userId, myRole, roles, memberRoles, members, openProfile, openDm, friendState, presence } = useApp()
+  const { userMenu, openUserMenu, profiles, userId, myRole, roles, memberRoles, members, openProfile, openDm, friendState, presence, myChosenStatus, setMyStatus } = useApp()
   const voice = useVoice()
   const ref = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ left: number; top: number }>({ left: 0, top: 0 })
   const [error, setError] = useState<string | null>(null)
-  const [subOpen, setSubOpen] = useState(false)
+  const [sub, setSub] = useState<'roles' | 'status' | null>(null)
   const [subPos, setSubPos] = useState<{ left: number; top: number }>({ left: 0, top: 0 })
   const [roleQuery, setRoleQuery] = useState('')
   const rolesItem = useRef<HTMLButtonElement>(null)
+  const statusItem = useRef<HTMLButtonElement>(null)
   const subRef = useRef<HTMLDivElement>(null)
   const closeTimer = useRef<number | null>(null)
 
@@ -26,18 +28,18 @@ export default function UserContextMenu() {
   }
   function scheduleCloseSub() {
     cancelCloseSub()
-    closeTimer.current = window.setTimeout(() => setSubOpen(false), 220)
+    closeTimer.current = window.setTimeout(() => setSub(null), 220)
   }
-  function openSub() {
+  function openSub(kind: 'roles' | 'status' = 'roles') {
     cancelCloseSub()
-    setSubOpen(true)
+    setSub(kind)
   }
 
   const uid = userMenu?.uid
   const close = () => openUserMenu(null)
 
   useEffect(() => {
-    setSubOpen(false)
+    setSub(null)
     setRoleQuery('')
     if (!userMenu) return
     setError(null)
@@ -68,15 +70,16 @@ export default function UserContextMenu() {
 
   // Alt paneli "Roller" satırının yanına yerleştir (sağa sığmazsa sola)
   useLayoutEffect(() => {
-    if (!subOpen || !rolesItem.current || !subRef.current || !ref.current) return
+    const trigger = sub === 'status' ? statusItem.current : rolesItem.current
+    if (!sub || !trigger || !subRef.current || !ref.current) return
     const menu = ref.current.getBoundingClientRect()
-    const item = rolesItem.current.getBoundingClientRect()
-    const sub = subRef.current.getBoundingClientRect()
+    const item = trigger.getBoundingClientRect()
+    const subRect = subRef.current.getBoundingClientRect()
     const right = menu.right + 6
-    const left = right + sub.width > window.innerWidth - 8 ? menu.left - sub.width - 6 : right
-    const top = Math.max(8, Math.min(item.top - 8, window.innerHeight - sub.height - 8))
+    const left = right + subRect.width > window.innerWidth - 8 ? menu.left - subRect.width - 6 : right
+    const top = Math.max(8, Math.min(item.top - 8, window.innerHeight - subRect.height - 8))
     setSubPos({ left, top })
-  }, [subOpen, roles.length, roleQuery])
+  }, [sub, roles.length, roleQuery])
 
   if (!userMenu || !uid) return null
   const p = profiles[uid]
@@ -102,6 +105,37 @@ export default function UserContextMenu() {
         <strong>{p?.display_name ?? 'Üye'}</strong>
         <span className="muted small">{formatTag(p?.tag)}</span>
       </div>
+      {isMe && (
+        <>
+          <button
+            ref={statusItem}
+            className={`context-sub-trigger${sub === 'status' ? ' open' : ''}`}
+            onMouseEnter={() => openSub('status')}
+            onMouseLeave={scheduleCloseSub}
+            onClick={() => openSub('status')}
+          >
+            <span className={`status-dot static ${myChosenStatus === 'invisible' ? 'offline' : myChosenStatus}`} />
+            <span className="context-role-name">Durum: {statusLabel(myChosenStatus)}</span>
+            <span className="context-sub-arrow">›</span>
+          </button>
+          {sub === 'status' && (
+            <div ref={subRef} className="context-menu context-submenu" style={subPos} onMouseEnter={cancelCloseSub} onMouseLeave={scheduleCloseSub}>
+              <div className="context-label">Durumunu seç</div>
+              {STATUS_OPTIONS.map((o) => (
+                <button key={o.id} className={`status-option${myChosenStatus === o.id ? ' on' : ''}`} onClick={() => { setMyStatus(o.id); close() }}>
+                  <span className={`status-dot static ${o.id === 'invisible' ? 'offline' : o.id}`} />
+                  <span className="status-option-text">
+                    <strong>{o.label}</strong>
+                    <span className="muted small">{o.hint}</span>
+                  </span>
+                  {myChosenStatus === o.id && <Icon name="check" size={14} />}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="context-sep" />
+        </>
+      )}
       <button onClick={() => { close(); openProfile(uid) }}><Icon name="users" size={16} /> Profil</button>
       {!isMe && isMember && (
         <button onClick={() => { close(); openDm(uid) }}><Icon name="message" size={16} /> Mesaj gönder</button>
@@ -129,10 +163,10 @@ export default function UserContextMenu() {
           <div className="context-sep" />
           <button
             ref={rolesItem}
-            className={`context-sub-trigger${subOpen ? ' open' : ''}`}
-            onMouseEnter={openSub}
+            className={`context-sub-trigger${sub === 'roles' ? ' open' : ''}`}
+            onMouseEnter={() => openSub('roles')}
             onMouseLeave={scheduleCloseSub}
-            onClick={openSub}
+            onClick={() => openSub('roles')}
           >
             <Icon name="shield" size={16} />
             <span className="context-role-name">Roller</span>
@@ -143,7 +177,7 @@ export default function UserContextMenu() {
             </span>
             <span className="context-sub-arrow">›</span>
           </button>
-          {subOpen && (
+          {sub === 'roles' && (
             <div
               ref={subRef}
               className="context-menu context-submenu"

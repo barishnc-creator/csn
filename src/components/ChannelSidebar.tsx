@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useVoice } from '../voice/VoiceContext'
 import Avatar from './Avatar'
 import Icon from './Icon'
+import { STATUS_OPTIONS, statusLabel } from '../lib/status'
 import ChannelSettingsModal from './ChannelSettingsModal'
 import type { SettingsTab } from './SettingsModal'
 
@@ -234,10 +235,9 @@ export function VoiceBar() {
 }
 
 export function UserPanel({ onOpenSettings }: { onOpenSettings: (tab: SettingsTab) => void }) {
-  const { me, userId, myStatus, setMyStatus, openProfile } = useApp()
+  const { me, userId, myStatus, myChosenStatus: myChosen, setMyStatus, openProfile } = useApp()
   const voice = useVoice()
   const [statusMenu, setStatusMenu] = useState(false)
-  const labels = { online: 'Çevrimiçi', idle: 'Boşta', dnd: 'Rahatsız etmeyin' } as const
 
   return (
     <div className="user-panel">
@@ -248,7 +248,7 @@ export function UserPanel({ onOpenSettings }: { onOpenSettings: (tab: SettingsTa
         <Avatar profile={me} userId={userId} size={32} status={myStatus} speaking={voice.pttActive} />
         <div className="user-panel-text">
           <div className="user-panel-name">{me?.display_name ?? '…'}</div>
-          <div className="user-panel-status">{me?.custom_status || labels[myStatus]}</div>
+          <div className="user-panel-status">{me?.custom_status || statusLabel(myStatus)}</div>
         </div>
       </button>
       {statusMenu && (
@@ -257,12 +257,11 @@ export function UserPanel({ onOpenSettings }: { onOpenSettings: (tab: SettingsTa
             <Icon name="users" size={16} /> Profilimi görüntüle
           </button>
           <div className="dropdown-sep" />
-          <button onClick={() => { setMyStatus('online'); setStatusMenu(false) }}>
-            <span className="status-dot static online" /> Çevrimiçi
-          </button>
-          <button onClick={() => { setMyStatus('dnd'); setStatusMenu(false) }}>
-            <span className="status-dot static dnd" /> Rahatsız etmeyin
-          </button>
+          {STATUS_OPTIONS.map((o) => (
+            <button key={o.id} className={myChosen === o.id ? 'selected' : ''} onClick={() => { setMyStatus(o.id); setStatusMenu(false) }}>
+              <span className={`status-dot static ${o.id === 'invisible' ? 'offline' : o.id}`} /> {o.label}
+            </button>
+          ))}
         </div>
       )}
       <button className={`icon-btn${voice.muted ? ' danger' : ''}`} onClick={voice.toggleMute} title={voice.muted ? 'Mikrofonu aç' : 'Sustur'}>
