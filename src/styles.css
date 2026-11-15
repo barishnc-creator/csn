@@ -889,3 +889,6 @@ html, body, #root { overflow: hidden; overscroll-behavior: none; }
 .revision-toast-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .revision-toast-text .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 768px) { .revision-toast { left: 10px; right: 10px; bottom: 80px; } }
+
+/* Okunmamış baloncukları her zaman kırmızı (kullanıcı isteği) */
+.badge.soft, .channel.unread .badge.soft, .rail-badge.soft { background: var(--red); color: #fff; }
