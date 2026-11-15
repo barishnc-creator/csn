@@ -1,7 +1,7 @@
 # CSN — Devir notu
 
 > Yeni bir oturum buradan devam eder. Önce bunu, sonra `CLAUDE.md`'yi oku.
-> Son güncelleme: 2026-11-15 (revize #26, #27, #28 yayında)
+> Son güncelleme: 2026-11-15 (revize #26-#29 + soundpad kısayolları yayında)
 
 ## Durum özeti
 CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'e her push'ta `.github/workflows/pages.yml` ile yayınlanır).
@@ -52,6 +52,8 @@ CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'
 | Revize #26 oda ayarları (`0020`): ses odasına kişi sınırı (kanal ayarlarında kaydırıcı, `channels.user_limit`; `livekit-token` LiveKit `ListParticipants` ile sayar, yöneticiler ve taşınan kişi sınırsız), oda adının yanında `içerideki/sınır` rozeti (dolunca kırmızı), rol yetkisi "Üyeleri taşı" (`move_members`), sağ tık → Taşı › odalar (`voice_moves` tablosu, hedef realtime ile o odaya geçer). Anahtar artık önce alınıyor: oda doluysa mevcut görüşme kopmaz | ✅ RLS SQL ile test edildi, sahte veriyle ekran görüntüsü; **canlı denenmedi** (LiveKit sayımı dahil) |
 | Revize #27 kanal başlıkları: METİN/SES KANALLARI ve kategori başlıkları üye paneli gibi (ikon kutucuğu, sayı rozeti, gradyan çizgi) | ✅ sahte veriyle ekran görüntüsü |
 | Revize #28 DM modunda sağda **Arkadaş etkinliği** paneli (`FriendsActivity.tsx`): çevrimiçi/seste olanlar üstte, sunucu (CSN) + ses kanalı adı, CANLI etiketi, "Katıl" düğmesi; sunucu modunda üye paneli kalır | ✅ sahte veriyle ekran görüntüsü |
+| Revize #29 sürükleyerek taşıma: `move_members` yetkilisi ses kanalındaki kişiyi tutup başka odanın üstüne bırakır (`ChannelSidebar.tsx`, `voice_moves` insert) | ✅ Playwright'ta sürükle-bırak isteği doğrulandı, canlı denenmedi |
+| Soundpad tuş atamaları (kullanıcı isteği): her sese kişiye özel kısayol, en az iki tuş (Ctrl/Alt/Shift + tuş), bu cihazda saklanır (`src/voice/soundpadKeys.ts`, `SoundpadHotkeys` Layout'ta); soundpad'de "⌨ Tuş ata", Esc vazgeç, Backspace kaldır; aynı kombinasyon başka sesten kalkar. Yalnız uygulama odaktayken çalışır | ✅ mantık testleri geçti, arayüz canlı denenmedi |
 | Electron masaüstü uygulaması (`desktop/`), kurulum: Actions → "Masaüstü (Windows)" ya da `desktop-v*` etiketi | ✅ 0.1.1 yayında: https://github.com/barishnc-creator/csn/releases/latest (Actions → "Masaüstü (Windows)" elle başlatılınca `desktop/package.json` sürümüyle yeni Release açar; bu ortamdan etiket push'u engelli) |
 
 ## Migrationlar (sırayla uygulandı)
@@ -65,7 +67,7 @@ CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'
 - Bazı migrationlarda (politika silme) Supabase MCP kullanıcıdan onay ister; yanıt gelmezse zaman aşımı olur, kullanıcıya söyle.
 
 ## Sıradaki işler
-- Onaylı revize kalmadı (#26-#28 bitti). Yeni istek gelirse `select * from revisions where status='approved'`.
+- Onaylı revize kalmadı (#26-#29 bitti). Yeni istek gelirse `select * from revisions where status='approved'`.
 
 ## Kullanıcıyla konuşulan, bekleyen
 - Uygulama adı değişikliği düşünülüyor (CSN = "couissin"). 10 öneri verildi (Kuzenhane, Cousy, Kuzn, Cuzzo, Tayfa, Cousinverse, Kuzen.io, Cousin Club, Familia, CSN+). Kullanıcı "isme daha sonra karar vereceğim" dedi: **sormadan başlama**. Seçince: `index.html` başlığı, `public/manifest`, `desktop/package.json` productName, sol üst logo harfi, metinler.
@@ -78,7 +80,7 @@ CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'
 - Okunmamış sayılarını sunucuda saklama (şu an yenileyince sıfırlanıyor) — kullanıcıya önerildi
 - GIF araması için GIPHY API anahtarı (ücretsiz) alınırsa sınırsız arama eklenebilir
 0. Android uygulaması (Capacitor APK): kullanıcı "şimdilik kalsın" dedi, sormadan başlama
-1. Masaüstü: oyun içindeyken de çalışan bas-konuş (globalShortcut), sistem tepsisi, uygulama simgesi (`desktop/build/icon.ico`), otomatik güncelleme
+1. Masaüstü: oyun içindeyken de çalışan bas-konuş ve soundpad kısayolları (globalShortcut), sistem tepsisi, uygulama simgesi (`desktop/build/icon.ico`), otomatik güncelleme
    - Bilinen sınır: masaüstünde sistem sesi paylaşılınca CSN'nin kendi sesi de gider (yankı)
 2. Kod bölme: ana JS paketi ~1,1 MB (LiveKit ve RNNoise yalnız sese girince yüklensin)
 3. Bildirim ayarları (kanal sessize alma), okunmamışların sunucuda saklanması

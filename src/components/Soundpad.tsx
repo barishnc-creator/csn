@@ -1,8 +1,9 @@
 import { confirmDialog } from '../lib/dialog'
-import { useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useApp } from '../lib/store'
 import { useVoice } from '../voice/VoiceContext'
 import { addSound, deleteSound, soundpad, useSoundpad, validateSoundFile, type SoundItem } from '../voice/soundpad'
+import { comboFromEvent, comboLabel, soundpadKeys, useSoundpadKeys } from '../voice/soundpadKeys'
 import AnchoredPopover from './Popover'
 import Icon from './Icon'
 
@@ -30,6 +31,28 @@ export default function SoundpadButton({ variant }: { variant: 'round' | 'pill' 
   )
 }
 
+/** Soundpad kısayollarını dinler (ses kanalındayken). Layout'ta bir kez çizilir. */
+export function SoundpadHotkeys() {
+  const { userId } = useApp()
+  const voice = useVoice()
+  const inVoice = !!voice.channelId
+  useEffect(() => {
+    if (!inVoice) return
+    const down = (e: KeyboardEvent) => {
+      if (e.repeat) return
+      const combo = comboFromEvent(e)
+      if (!combo) return
+      const id = soundpadKeys.find(combo)
+      if (!id) return
+      e.preventDefault()
+      soundpad.send(id, userId)
+    }
+    window.addEventListener('keydown', down)
+    return () => window.removeEventListener('keydown', down)
+  }, [inVoice, userId])
+  return null
+}
+
 function SoundpadGrid() {
   const { userId, myRole, profiles, can } = useApp()
   const voice = useVoice()
@@ -41,6 +64,31 @@ function SoundpadGrid() {
   const [adding, setAdding] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [flash, setFlash] = useState<string | null>(null)
+  const keys = useSoundpadKeys()
+  // Tuş atama: hangi ses için kombinasyon bekleniyor
+  const [binding, setBinding] = useState<string | null>(null)
+  const [bindHint, setBindHint] = useState<string | null>(null)
+  useEffect(() => {
+    if (!binding) return
+    const down = (e: KeyboardEvent) => {
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      if (e.code === 'Escape') return setBinding(null)
+      if (e.code === 'Backspace' || e.code === 'Delete') {
+        soundpadKeys.clear(binding)
+        return setBinding(null)
+      }
+      const combo = comboFromEvent(e)
+      if (!combo) {
+        if (!/^(Control|Alt|Shift|Meta|OS)/.test(e.code)) setBindHint('En az iki tuş: Ctrl, Alt ya da Shift ile birlikte bas')
+        return
+      }
+      soundpadKeys.set(binding, combo)
+      setBinding(null)
+    }
+    window.addEventListener('keydown', down, true)
+    return () => window.removeEventListener('keydown', down, true)
+  }, [binding])
 
   function play(s: SoundItem) {
     const e = soundpad.send(s.id, userId)
@@ -85,9 +133,16 @@ function SoundpadGrid() {
             <div className="soundpad-grid">
               {snap.sounds.map((s) => (
                 <div key={s.id} className={`sound-tile${flash === s.id ? ' flash' : ''}`}>
-                  <button className="sound-play" onClick={() => play(s)} disabled={!voice.channelId} title={s.name}>
+                  <button className="sound-play" onClick={() => play(s)} disabled={!voice.channelId} title={keys[s.id] ? `${s.name} · ${comboLabel(keys[s.id])}` : s.name}>
                     <span className="sound-emoji">{s.emoji}</span>
                     <span className="sound-name">{s.name}</span>
+                  </button>
+                  <button
+                    className={`sound-key${keys[s.id] ? ' set' : ''}${binding === s.id ? ' capturing' : ''}`}
+                    onClick={() => { setBindHint(null); setBinding(binding === s.id ? null : s.id) }}
+                    title={keys[s.id] ? 'Kısayolu değiştir' : 'Kısayol ata'}
+                  >
+                    {binding === s.id ? 'Tuşlara bas…' : keys[s.id] ? comboLabel(keys[s.id]) : '⌨ Tuş ata'}
                   </button>
                   {canDelete(s) && (
                     <button className="sound-del" onClick={() => remove(s)} title="Sil">
@@ -101,6 +156,11 @@ function SoundpadGrid() {
         </>
       )}
 
+      {binding && (
+        <div className="small sound-bind-hint">
+          {bindHint ?? 'Kısayol için en az iki tuşa birlikte bas (ör. Ctrl + 1, Alt + Q).'} Esc: vazgeç · Backspace: kaldır
+        </div>
+      )}
       <label className="music-volume" title="Yalnız sende değişir">
         <span className="small muted">Ses</span>
         <input type="range" min={0} max={100} value={snap.volume} onChange={(e) => soundpad.setVolume(Number(e.target.value))} />
