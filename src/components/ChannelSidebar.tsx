@@ -24,7 +24,7 @@ interface Props {
 }
 
 export default function ChannelSidebar({ currentId, onSelect, unread, mentions, onOpenSettings, onFriends }: Props) {
-  const { channels, presence, profiles, myRole, isOwner, can, openProfile, openUserMenu, canJoin } = useApp()
+  const { channels, presence, profiles, can, openProfile, openUserMenu, canJoin } = useApp()
   const [chSettings, setChSettings] = useState<string | null>(null)
   const [creating, setCreating] = useState<'text' | 'voice' | null>(null)
   const [pendingSelect, setPendingSelect] = useState<string | null>(null)
@@ -37,16 +37,6 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
   }, [pendingSelect, channels, onSelect])
   const voice = useVoice()
   const musicRows = useMusicRows()
-  const [menu, setMenu] = useState(false)
-
-  const [reloadOpen, setReloadOpen] = useState(false)
-  const [installable, setInstallable] = useState(canInstall())
-  useEffect(() => {
-    const off = onInstallChange(() => setInstallable(canInstall()))
-    return () => {
-      off()
-    }
-  }, [])
   const text = channels.filter((c) => c.kind === 'text')
   const voiceChannels = channels.filter((c) => c.kind === 'voice')
   const speaking = new Set(voice.participants.filter((p) => p.speaking).map((p) => p.id))
@@ -54,67 +44,14 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
   return (
     <aside className="sidebar">
       <header className="sidebar-header">
-        <button className="sidebar-title" onClick={() => setMenu((m) => !m)} title="Sunucu menüsü">
+        <div className="sidebar-title">
           <span className="server-mini">C</span>
           <span>CSN</span>
-        </button>
+        </div>
         <div className="sidebar-header-actions">
           <button className="icon-btn" title="Arkadaşlar" onClick={onFriends}><Icon name="friends" size={18} /></button>
-          <button
-            className={`icon-btn${menu ? ' active' : ''}`}
-            title="Sunucu ayarları"
-            onClick={() => setMenu((m) => !m)}
-          >
-            <Icon name="gear" size={18} />
-          </button>
         </div>
       </header>
-      {menu && (
-        <div className="dropdown" onMouseLeave={() => setMenu(false)}>
-          {isOwner && (
-            <button className="accent" onClick={() => { setMenu(false); setReloadOpen(true) }}>
-              <Icon name="refresh" size={16} /> Herkesi yenile
-            </button>
-          )}
-          {can('create_invites') && (
-            <button onClick={() => { setMenu(false); onOpenSettings('invites') }}>
-              <Icon name="users" size={16} /> Arkadaş davet et
-            </button>
-          )}
-          {can('manage_channels') && (
-            <button onClick={() => { setMenu(false); onOpenSettings('channels') }}>
-              <Icon name="plusCircle" size={16} /> Kanalları yönet
-            </button>
-          )}
-          {can('submit_revisions') && (
-            <button onClick={() => { setMenu(false); onOpenSettings('revisions') }}>
-              <Icon name="file" size={16} /> Revizeler
-            </button>
-          )}
-          {myRole === 'admin' && (
-            <button onClick={() => { setMenu(false); onOpenSettings('roles') }}>
-              <Icon name="shield" size={16} /> Roller
-            </button>
-          )}
-          {myRole === 'admin' && (
-            <button onClick={() => { setMenu(false); onOpenSettings('members') }}>
-              <Icon name="users" size={16} /> Üyeler
-            </button>
-          )}
-          <div className="dropdown-sep" />
-          {installable && !isStandalone() && (
-            <button className="accent" onClick={() => { setMenu(false); promptInstall() }}>
-              <Icon name="download" size={16} /> Uygulama olarak yükle
-            </button>
-          )}
-          <button onClick={() => { setMenu(false); onOpenSettings('profile') }}>
-            <Icon name="edit" size={16} /> Profilimi düzenle
-          </button>
-          <button className="danger" onClick={() => supabase.auth.signOut()}>
-            <Icon name="logout" size={16} /> Çıkış yap
-          </button>
-        </div>
-      )}
 
       <div className="channel-scroll">
         <div className="category-row">
@@ -210,7 +147,6 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
       {voice.channelId && <VoiceBar />}
       <UserPanel onOpenSettings={onOpenSettings} />
 
-      {reloadOpen && <ReloadDialog onClose={() => setReloadOpen(false)} />}
       {creating && (
         <CreateChannelModal
           kind={creating}
@@ -289,16 +225,27 @@ export function VoiceBar() {
 }
 
 export function UserPanel({ onOpenSettings }: { onOpenSettings: (tab: SettingsTab) => void }) {
-  const { me, userId, myStatus, myChosenStatus: myChosen, setMyStatus, openProfile } = useApp()
+  const { me, userId, myStatus, myChosenStatus: myChosen, setMyStatus, openProfile, isOwner, can, myRole } = useApp()
   const voice = useVoice()
   const [statusMenu, setStatusMenu] = useState(false)
+  // Tek ayarlar menüsü (sol alttaki çark): sunucu ve kullanıcı ayarları birlikte
+  const [menu, setMenu] = useState(false)
+  const [reloadOpen, setReloadOpen] = useState(false)
+  const [installable, setInstallable] = useState(canInstall())
+  useEffect(() => {
+    const off = onInstallChange(() => setInstallable(canInstall()))
+    return () => {
+      off()
+    }
+  }, [])
+  const open = (t: SettingsTab) => { setMenu(false); onOpenSettings(t) }
 
   return (
     <div className="user-panel">
       <button className="icon-btn logout-btn" title="Çıkış yap" onClick={async () => (await confirmDialog({ title: 'Çıkış yapılsın mı?', message: 'CSN hesabından çıkış yapacaksın.', confirmText: 'Çıkış yap', danger: true })) && supabase.auth.signOut()}>
         <Icon name="logout" size={18} />
       </button>
-      <button className="user-panel-me" onClick={() => setStatusMenu((s) => !s)}>
+      <button className="user-panel-me" onClick={() => { setMenu(false); setStatusMenu((s) => !s) }}>
         <Avatar profile={me} userId={userId} size={32} status={myStatus} speaking={voice.pttActive} />
         <div className="user-panel-text">
           <div className="user-panel-name">{me?.display_name ?? '…'}</div>
@@ -324,9 +271,43 @@ export function UserPanel({ onOpenSettings }: { onOpenSettings: (tab: SettingsTa
       <button className={`icon-btn${voice.deafened ? ' danger' : ''}`} onClick={voice.toggleDeafen} title={voice.deafened ? 'Sesi aç' : 'Sağırlaştır'}>
         <Icon name={voice.deafened ? 'headphonesOff' : 'headphones'} />
       </button>
-      <button className="icon-btn" onClick={() => onOpenSettings('voice')} title="Ayarlar">
+      <button className={`icon-btn${menu ? ' active' : ''}`} onClick={() => { setStatusMenu(false); setMenu((m) => !m) }} title="Ayarlar">
         <Icon name="gear" />
       </button>
+      {menu && (
+        <div className="dropdown settings-menu" onMouseLeave={() => setMenu(false)}>
+          {isOwner && (
+            <button className="accent" onClick={() => { setMenu(false); setReloadOpen(true) }}>
+              <Icon name="refresh" size={16} /> Herkesi yenile
+            </button>
+          )}
+          {can('create_invites') && (
+            <button onClick={() => open('invites')}><Icon name="users" size={16} /> Arkadaş davet et</button>
+          )}
+          {can('manage_channels') && (
+            <button onClick={() => open('channels')}><Icon name="plusCircle" size={16} /> Kanalları yönet</button>
+          )}
+          {can('submit_revisions') && (
+            <button onClick={() => open('revisions')}><Icon name="file" size={16} /> Revizeler</button>
+          )}
+          {myRole === 'admin' && (
+            <button onClick={() => open('roles')}><Icon name="shield" size={16} /> Roller</button>
+          )}
+          {myRole === 'admin' && (
+            <button onClick={() => open('members')}><Icon name="users" size={16} /> Üyeler</button>
+          )}
+          {(isOwner || can('create_invites') || can('manage_channels') || can('submit_revisions') || myRole === 'admin') && <div className="dropdown-sep" />}
+          <button onClick={() => open('profile')}><Icon name="edit" size={16} /> Profilimi düzenle</button>
+          <button onClick={() => open('voice')}><Icon name="mic" size={16} /> Ses ve görüntü</button>
+          <button onClick={() => open('appearance')}><Icon name="sparkles" size={16} /> Görünüm</button>
+          {installable && !isStandalone() && (
+            <button className="accent" onClick={() => { setMenu(false); promptInstall() }}>
+              <Icon name="download" size={16} /> Uygulama olarak yükle
+            </button>
+          )}
+        </div>
+      )}
+      {reloadOpen && <ReloadDialog onClose={() => setReloadOpen(false)} />}
     </div>
   )
 }

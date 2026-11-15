@@ -1234,3 +1234,5 @@ a { color: var(--accent-2); }
 .desktop-frame.desktop-fullscreen #root { padding-top: 0; }
 .desktop-frame.desktop-fullscreen .app { height: 100dvh; }
 .desktop-frame:not(.desktop-fullscreen) :is(.lightbox, .modal-backdrop, .call-stage.theater) { top: var(--titlebar-h, 34px); }
+.settings-menu { bottom: 60px; right: 8px; width: 240px; }
+.sidebar-title:hover { background: none; }
