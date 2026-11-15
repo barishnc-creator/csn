@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { canInstall, isStandalone, onInstallChange, promptInstall } from '../lib/install'
 import { useApp } from '../lib/store'
 import { supabase } from '../lib/supabase'
 import { useVoice } from '../voice/VoiceContext'
@@ -21,6 +22,13 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
   const [menu, setMenu] = useState(false)
 
   const [reloadOpen, setReloadOpen] = useState(false)
+  const [installable, setInstallable] = useState(canInstall())
+  useEffect(() => {
+    const off = onInstallChange(() => setInstallable(canInstall()))
+    return () => {
+      off()
+    }
+  }, [])
   const text = channels.filter((c) => c.kind === 'text')
   const voiceChannels = channels.filter((c) => c.kind === 'voice')
   const speaking = new Set(voice.participants.filter((p) => p.speaking).map((p) => p.id))
@@ -76,6 +84,11 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
             </button>
           )}
           <div className="dropdown-sep" />
+          {installable && !isStandalone() && (
+            <button className="accent" onClick={() => { setMenu(false); promptInstall() }}>
+              <Icon name="download" size={16} /> Uygulama olarak yükle
+            </button>
+          )}
           <button onClick={() => { setMenu(false); onOpenSettings('profile') }}>
             <Icon name="edit" size={16} /> Profilimi düzenle
           </button>
