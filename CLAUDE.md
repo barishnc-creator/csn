@@ -29,3 +29,9 @@ CSN'deki değişiklik istekleri uygulama içindeki **Revizeler** bölümünden g
 ## Oturum sürekliliği
 - Bağlam %50'yi geçtiğinde `DEVIR_NOTU.md`'yi güncelle (yapılanlar, yarım kalanlar, sıradakiler) ve commit'le; kullanıcı yeni oturumda kaldığı yerden devam eder.
 - Kolay ve birbirinden bağımsız işleri alt ajanlara ver (dosya kapsamını net ayır, aynı dosyaya iki ajan dokunmasın); sonucu her zaman kendin kontrol et ve derle.
+
+## #yenilikler kanalı (kesin kural)
+Yayına giden her değişikliği, `#yenilikler` kanalına (id `3e81c0b9-a9b7-41ef-90d4-2f31e93b24e8`, yalnız CEO ve GELİŞTİRİCİ rolleri görür) **madde madde, kısa ve Türkçe** olarak paylaş.
+- Yazar her zaman bot hesabı **CSN Güncelleme** (`c5b00000-0000-4000-8000-00000000c5b0`, giriş yapılamaz). Kullanıcı adına yazma.
+- Supabase MCP ile: `insert into public.messages (channel_id, author_id, content) values ('3e81c0b9-a9b7-41ef-90d4-2f31e93b24e8', 'c5b00000-0000-4000-8000-00000000c5b0', $$🆕 **Başlık**\n• madde\n• madde$$);`
+- Biten revizeleri "Revize #N ✅" diye belirt; yarım kalanları "⏳ Yapılıyor" altında yaz. Denenmemiş şeyleri öyle olduğunu söyleyerek yaz.
