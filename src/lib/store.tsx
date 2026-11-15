@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import { BUILD_ID, fetchLatestBuild, hardReload } from './version'
+import { applyTheme, type ThemeId } from './theme'
 import type {
   Channel,
   ChannelMember,
@@ -69,6 +70,8 @@ interface AppState {
   reloadNotice: ReloadNotice | null
   /** Sahip için: onay bekleyen revize sayısı ve yeni gelen revize uyarısı */
   pendingRevisions: number
+  /** Sunucu teması (yöneticiler seçer) */
+  serverTheme: { theme: ThemeId; accent: string | null }
   revisionNotice: { id: number; title: string; by: string } | null
   dismissRevisionNotice: () => void
   dismissReload: () => void
@@ -119,6 +122,23 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
   const [userMenu, setUserMenu] = useState<{ uid: string; x: number; y: number } | null>(null)
   const [reloadNotice, setReloadNotice] = useState<ReloadNotice | null>(null)
   const [pendingRevisions, setPendingRevisions] = useState(0)
+  const [serverTheme, setServerTheme] = useState<{ theme: ThemeId; accent: string | null }>(() => {
+    try {
+      const c = JSON.parse(localStorage.getItem('csn.theme') ?? 'null')
+      if (c?.theme) return c
+    } catch {
+      // yoksay
+    }
+    return { theme: 'midnight', accent: null }
+  })
+  useEffect(() => {
+    applyTheme(serverTheme.theme, serverTheme.accent)
+    try {
+      localStorage.setItem('csn.theme', JSON.stringify(serverTheme))
+    } catch {
+      // yoksay
+    }
+  }, [serverTheme])
   const [revisionNotice, setRevisionNotice] = useState<{ id: number; title: string; by: string } | null>(null)
   const reloadVersion = useRef<number | null>(null)
   const [myStatus, setMyStatusState] = useState<UserStatus>(() => {
@@ -173,7 +193,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
     const load = async () => {
       const [m, st] = await Promise.all([
         supabase.from('members').select('user_id, role, is_owner, joined_at'),
-        supabase.from('server_state').select('reload_version').maybeSingle(),
+        supabase.from('server_state').select('reload_version, theme, accent').maybeSingle(),
         refreshChannels(),
         refreshRoles(),
         refreshProfiles(),
@@ -182,6 +202,9 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       if (!alive) return
       if (m.data) setMembers(m.data as Member[])
       reloadVersion.current = st.data?.reload_version ?? 0
+      if (st.data) {
+        setServerTheme({ theme: (st.data.theme as ThemeId) ?? 'midnight', accent: st.data.accent ?? null })
+      }
     }
     load()
 
@@ -214,7 +237,8 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
         setProfiles((prev) => ({ ...prev, [row.id]: row }))
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'server_state' }, (p) => {
-        const row = p.new as { reload_version: number; reload_note: string | null; reloaded_by: string | null }
+        const row = p.new as { reload_version: number; reload_note: string | null; reloaded_by: string | null; theme: ThemeId; accent: string | null }
+        setServerTheme({ theme: row.theme ?? 'midnight', accent: row.accent ?? null })
         if (reloadVersion.current !== null && row.reload_version > reloadVersion.current) {
           reloadVersion.current = row.reload_version
           setReloadNotice({ note: row.reload_note, by: row.reloaded_by, forced: true })
@@ -417,12 +441,13 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       reloadNotice,
       dismissReload: () => setReloadNotice(null),
       pendingRevisions,
+      serverTheme,
       revisionNotice,
       dismissRevisionNotice: () => setRevisionNotice(null),
     }
   }, [
     userId, profiles, members, channels, roles, memberRoles, dmMembers, friendships, presence, effectiveStatus, myStatus,
-    setMyStatus, updatePresence, refreshProfiles, mode, selectedId, select, openDm, profileOf, userMenu, reloadNotice, pendingRevisions, revisionNotice,
+    setMyStatus, updatePresence, refreshProfiles, mode, selectedId, select, openDm, profileOf, userMenu, reloadNotice, pendingRevisions, revisionNotice, serverTheme,
   ])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

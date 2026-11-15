@@ -10,14 +10,16 @@ import Avatar from './Avatar'
 import Icon, { type IconName } from './Icon'
 import RevisionsTab from './RevisionsTab'
 import { inviteLink } from '../lib/invite'
+import { ACCENTS, THEMES, type ThemeId } from '../lib/theme'
 import ChannelSettingsModal from './ChannelSettingsModal'
 import { ProfileCard } from './UserProfileModal'
 
-export type SettingsTab = 'profile' | 'voice' | 'invites' | 'channels' | 'roles' | 'members' | 'revisions'
+export type SettingsTab = 'profile' | 'voice' | 'appearance' | 'invites' | 'channels' | 'roles' | 'members' | 'revisions'
 
 const tabMeta: Record<SettingsTab, { label: string; icon: IconName; group: string }> = {
   profile: { label: 'Profilim', icon: 'users', group: 'Kullanıcı ayarları' },
   voice: { label: 'Ses ve görüntü', icon: 'mic', group: 'Kullanıcı ayarları' },
+  appearance: { label: 'Görünüm', icon: 'sparkles', group: 'Sunucu' },
   invites: { label: 'Davetler', icon: 'plusCircle', group: 'Sunucu' },
   channels: { label: 'Kanallar', icon: 'hash', group: 'Sunucu' },
   roles: { label: 'Roller', icon: 'shield', group: 'Sunucu' },
@@ -34,6 +36,7 @@ export default function SettingsModal({ initialTab, onClose }: { initialTab: Set
   const show: Record<SettingsTab, boolean> = {
     profile: true,
     voice: true,
+    appearance: true,
     invites: can('create_invites'),
     channels: can('manage_channels'),
     roles: isAdmin,
@@ -89,6 +92,7 @@ export default function SettingsModal({ initialTab, onClose }: { initialTab: Set
           <div className="settings-body">
             {tab === 'profile' && <ProfileTab />}
             {tab === 'voice' && <VoiceTab />}
+            {tab === 'appearance' && <AppearanceTab />}
             {tab === 'invites' && show.invites && <InvitesTab />}
             {tab === 'channels' && show.channels && <ChannelsTab />}
             {tab === 'roles' && show.roles && <RolesTab />}
@@ -884,5 +888,84 @@ function CoverThumb({ path, color, userId }: { path: string | null; color: strin
       style={url ? { backgroundImage: `url("${url}")` } : { background: `linear-gradient(135deg, ${c}, color-mix(in srgb, ${c} 55%, #000))` }}
       title={url ? 'Mevcut kapak fotoğrafı' : 'Kapak rengi'}
     />
+  )
+}
+
+// ───────── Görünüm (sunucu teması) ─────────
+
+function AppearanceTab() {
+  const { serverTheme, myRole } = useApp()
+  const isAdmin = myRole === 'admin'
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  async function set(theme: ThemeId, accent: string | null) {
+    if (!isAdmin) return
+    setBusy(true)
+    setError(null)
+    const { error } = await supabase.rpc('set_server_theme', { new_theme: theme, new_accent: accent ?? '' })
+    setBusy(false)
+    if (error) setError(error.message)
+  }
+
+  return (
+    <div className="settings-page appearance">
+      <p className="muted">
+        {isAdmin
+          ? 'Seçtiğin tema sunucudaki herkese anında uygulanır.'
+          : 'Sunucu temasını yöneticiler seçer. Şu an kullanılan tema aşağıda işaretli.'}
+      </p>
+      {error && <div className="form-error">{error}</div>}
+      <div className="theme-grid">
+        {THEMES.map((t) => {
+          const active = serverTheme.theme === t.id
+          const [bg, panel, accent, text] = t.swatch
+          return (
+            <button key={t.id} className={`theme-card${active ? ' active' : ''}`} disabled={!isAdmin || busy} onClick={() => set(t.id, null)}>
+              <div className="theme-mock" style={{ background: bg }}>
+                <div className="tm-rail" style={{ background: panel }}><i style={{ background: accent }} /><i /><i /></div>
+                <div className="tm-side" style={{ background: panel }}>
+                  <b style={{ background: accent, opacity: 0.35 }} /><b /><b /><b />
+                </div>
+                <div className="tm-main" style={{ background: panel }}>
+                  <span style={{ background: text, opacity: 0.85 }} />
+                  <span style={{ background: text, opacity: 0.4, width: '70%' }} />
+                  <span style={{ background: text, opacity: 0.4, width: '55%' }} />
+                  <em style={{ background: accent }} />
+                </div>
+              </div>
+              <div className="theme-info">
+                <div className="theme-name">{t.name} {active && <Icon name="check" size={14} />}</div>
+                <div className="muted small">{t.desc}</div>
+              </div>
+            </button>
+          )
+        })}
+      </div>
+      <section>
+        <h3>Vurgu rengi</h3>
+        <div className="swatches">
+          <button
+            className={`swatch auto${!serverTheme.accent ? ' active' : ''}`}
+            disabled={!isAdmin || busy}
+            onClick={() => set(serverTheme.theme, null)}
+            title="Temanın kendi rengi"
+          >
+            A
+          </button>
+          {ACCENTS.map((c) => (
+            <button
+              key={c}
+              className={`swatch${serverTheme.accent === c ? ' active' : ''}`}
+              style={{ background: c }}
+              disabled={!isAdmin || busy}
+              onClick={() => set(serverTheme.theme, c)}
+              title={c}
+            />
+          ))}
+        </div>
+        <p className="muted small">Düğmeler, seçili kanal, bağlantılar ve vurgular bu renkte görünür.</p>
+      </section>
+    </div>
   )
 }
