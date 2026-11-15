@@ -7,6 +7,7 @@ import { mentionsMe, renderMarkdown } from '../lib/markdown'
 import type { Attachment, Message, Reaction } from '../lib/types'
 import Avatar from './Avatar'
 import Icon from './Icon'
+import { isGifMessage } from './GifPicker'
 
 export const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥', '🎉', '👀', '💯', '🙏', '😎', '✅']
 
@@ -66,7 +67,7 @@ function MessageItem({ message: m, grouped, replied, reactions, editing, canDele
             <>
               <Avatar profile={profiles[replied.author_id]} userId={replied.author_id} size={16} />
               <strong style={{ color: nameColor(replied.author_id) }}>{profiles[replied.author_id]?.display_name ?? 'Üye'}</strong>
-              <span className="reply-snippet">{replied.content || 'Ek dosya'}</span>
+              <span className="reply-snippet">{isGifMessage(replied.content) ? 'GIF' : replied.content || 'Ek dosya'}</span>
             </>
           ) : (
             <span className="reply-snippet muted">Eski bir mesaja yanıt</span>
@@ -96,7 +97,9 @@ function MessageItem({ message: m, grouped, replied, reactions, editing, canDele
           {editing ? (
             <EditBox message={m} onDone={onEditDone} />
           ) : (
-            m.content && (
+            m.content && isGifMessage(m.content) ? (
+              <img className="gif-message" src={m.content.trim()} alt="GIF" loading="lazy" />
+            ) : m.content && (
               <div className="message-content">
                 {renderMarkdown(m.content, names, me?.display_name)}
                 {m.edited_at && <span className="edited" title={formatStamp(m.edited_at)}> (düzenlendi)</span>}

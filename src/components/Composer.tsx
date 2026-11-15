@@ -5,6 +5,7 @@ import { formatSize, uploadFile } from '../lib/files'
 import type { Attachment, Channel, Message } from '../lib/types'
 import Avatar from './Avatar'
 import Icon from './Icon'
+import GifPicker from './GifPicker'
 
 const MAX_FILE = 25 * 1024 * 1024
 const TYPING_TTL = 4000
@@ -25,6 +26,7 @@ export default function Composer({ channel, placeholder, replyTo, onCancelReply,
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
+  const [gifOpen, setGifOpen] = useState(false)
   const [typers, setTypers] = useState<Record<string, number>>({})
   const [mention, setMention] = useState<{ query: string; start: number; index: number } | null>(null)
   const input = useRef<HTMLTextAreaElement>(null)
@@ -93,6 +95,17 @@ export default function Composer({ channel, placeholder, replyTo, onCancelReply,
       setBusy(false)
       input.current?.focus()
     }
+  }
+
+  async function sendGif(url: string) {
+    setGifOpen(false)
+    setError(null)
+    try {
+      await onSend(url, [])
+    } catch (e) {
+      setError((e as Error).message || 'GIF gönderilemedi')
+    }
+    input.current?.focus()
   }
 
   // @bahsetme önerileri
@@ -250,7 +263,11 @@ export default function Composer({ channel, placeholder, replyTo, onCancelReply,
           disabled={busy}
           autoFocus
         />
+        <button className={`gif-toggle${gifOpen ? ' active' : ''}`} onClick={() => setGifOpen((o) => !o)} title="GIF gönder">
+          GIF
+        </button>
       </div>
+      {gifOpen && <GifPicker onPick={sendGif} onClose={() => setGifOpen(false)} />}
       <div className="composer-footer">
         {error ? (
           <span className="form-error inline">{error}</span>

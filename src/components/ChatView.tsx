@@ -9,6 +9,7 @@ import Icon from './Icon'
 import MessageItem from './MessageItem'
 import Composer from './Composer'
 import { CallStage } from './VoiceView'
+import { isGifMessage } from './GifPicker'
 
 const PAGE = 50
 const GROUP_MS = 5 * 60 * 1000
@@ -312,7 +313,7 @@ function MiniMessage({ m, onJump }: { m: Message; onJump: (id: number) => void }
         <div>
           <strong>{profiles[m.author_id]?.display_name ?? 'Üye'}</strong> <span className="muted small">{formatStamp(m.created_at)}</span>
         </div>
-        <div className="mini-msg-text">{m.content || (m.attachments.length ? '📎 Ek dosya' : '')}</div>
+        <div className="mini-msg-text">{isGifMessage(m.content) ? '🎞️ GIF' : m.content || (m.attachments.length ? '📎 Ek dosya' : '')}</div>
       </div>
     </button>
   )
