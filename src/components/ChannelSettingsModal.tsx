@@ -7,12 +7,13 @@ import Icon from './Icon'
 
 /** Kanal ayarları: ad, konu, kimler görebilir, kimler girebilir (revize #6) */
 export default function ChannelSettingsModal({ channelId, onClose }: { channelId: string; onClose: () => void }) {
-  const { channels, roles } = useApp()
+  const { channels, roles, categories } = useApp()
   const ch = channels.find((c) => c.id === channelId)
   const [name, setName] = useState(ch?.name ?? '')
   const [topic, setTopic] = useState(ch?.topic ?? '')
   const [view, setView] = useState<string[]>(ch?.allowed_roles ?? [])
   const [join, setJoin] = useState<string[]>(ch?.join_roles ?? [])
+  const [categoryId, setCategoryId] = useState<string | null>(ch?.category_id ?? null)
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
 
@@ -39,6 +40,7 @@ export default function ChannelSettingsModal({ channelId, onClose }: { channelId
         topic: c.kind === 'text' ? topic.trim() || null : null,
         allowed_roles: view.length ? view : null,
         join_roles: joinClean.length ? joinClean : null,
+        category_id: categoryId,
       })
       .eq('id', c.id)
     if (error) setError(error.message)
@@ -98,6 +100,18 @@ export default function ChannelSettingsModal({ channelId, onClose }: { channelId
           <label>
             Konu <span className="hint">isteğe bağlı</span>
             <input value={topic} onChange={(e) => setTopic(e.target.value)} maxLength={200} placeholder="Bu kanal ne için?" />
+          </label>
+        )}
+
+        {categories.some((g) => g.kind === ch.kind) && (
+          <label>
+            Kategori
+            <select value={categoryId ?? ''} onChange={(e) => setCategoryId(e.target.value || null)}>
+              <option value="">{isVoice ? 'Ses kanalları (kategorisiz)' : 'Metin kanalları (kategorisiz)'}</option>
+              {categories.filter((g) => g.kind === ch.kind).map((g) => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
           </label>
         )}
 

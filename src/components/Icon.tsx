@@ -53,6 +53,8 @@ import {
   Repeat1,
   ListMusic,
   Square,
+  FolderPlus,
+  ChevronRight,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -71,6 +73,8 @@ const icons = {
   users: Users,
   plus: Plus,
   plusCircle: CirclePlus,
+  folderPlus: FolderPlus,
+  chevronRight: ChevronRight,
   x: X,
   edit: Pencil,
   trash: Trash2,

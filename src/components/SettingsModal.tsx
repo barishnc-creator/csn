@@ -10,6 +10,8 @@ import { useVoice } from '../voice/VoiceContext'
 import Avatar from './Avatar'
 import Icon, { type IconName } from './Icon'
 import RevisionsTab from './RevisionsTab'
+import ReloadDialog from './ReloadDialog'
+import { canInstall, isStandalone, onInstallChange, promptInstall } from '../lib/install'
 import { inviteLink } from '../lib/invite'
 import { ACCENTS, THEMES, type ThemeId } from '../lib/theme'
 import ChannelSettingsModal from './ChannelSettingsModal'
@@ -32,7 +34,15 @@ const tabMeta: Record<SettingsTab, { label: string; icon: IconName; group: strin
 }
 
 export default function SettingsModal({ initialTab, onClose }: { initialTab: SettingsTab; onClose: () => void }) {
-  const { myRole, can } = useApp()
+  const { myRole, can, isOwner } = useApp()
+  const [reloadOpen, setReloadOpen] = useState(false)
+  const [installable, setInstallable] = useState(canInstall())
+  useEffect(() => {
+    const off = onInstallChange(() => setInstallable(canInstall()))
+    return () => {
+      off()
+    }
+  }, [])
   const [history, setHistory] = useState<SettingsTab[]>([initialTab])
   const tab = history[history.length - 1]
   const isAdmin = myRole === 'admin'
@@ -82,6 +92,20 @@ export default function SettingsModal({ initialTab, onClose }: { initialTab: Set
               ))}
             </div>
           ))}
+          {(isOwner || (installable && !isStandalone())) && (
+            <div className="settings-nav-group settings-nav-extra">
+              {isOwner && (
+                <button className="accent" onClick={() => setReloadOpen(true)}>
+                  <Icon name="refresh" size={16} /> Herkesi yenile
+                </button>
+              )}
+              {installable && !isStandalone() && (
+                <button className="accent" onClick={() => promptInstall()}>
+                  <Icon name="download" size={16} /> Uygulama olarak yükle
+                </button>
+              )}
+            </div>
+          )}
         </nav>
         <section className="settings-main">
           <header className="settings-topbar">
@@ -107,6 +131,7 @@ export default function SettingsModal({ initialTab, onClose }: { initialTab: Set
           </div>
         </section>
       </div>
+      {reloadOpen && <ReloadDialog onClose={() => setReloadOpen(false)} />}
     </div>
   )
 }

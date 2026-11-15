@@ -74,6 +74,15 @@ export interface Channel {
   position: number
   allowed_roles: string[] | null
   join_roles: string[] | null
+  category_id: string | null
+}
+
+/** Revize #25: kanal kategorisi (metin ya da ses) */
+export interface ChannelCategory {
+  id: string
+  name: string
+  kind: 'text' | 'voice'
+  position: number
 }
 
 export interface Attachment {

@@ -13,6 +13,7 @@ import type {
   MemberRole,
   Permission,
   PresenceState,
+  ChannelCategory,
   Profile,
   Role,
   UserStatus,
@@ -35,6 +36,7 @@ interface AppState {
   profiles: Record<string, Profile>
   members: Member[]
   channels: Channel[]
+  categories: ChannelCategory[]
   roles: CustomRole[]
   memberRoles: MemberRole[]
   dmMembers: ChannelMember[]
@@ -112,6 +114,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
   const [profiles, setProfiles] = useState<Record<string, Profile>>({})
   const [members, setMembers] = useState<Member[]>([])
   const [channels, setChannels] = useState<Channel[]>([])
+  const [categories, setCategories] = useState<ChannelCategory[]>([])
   const [roles, setRoles] = useState<CustomRole[]>([])
   const [memberRoles, setMemberRoles] = useState<MemberRole[]>([])
   const [dmMembers, setDmMembers] = useState<ChannelMember[]>([])
@@ -166,11 +169,13 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
   }, [])
 
   const refreshChannels = useCallback(async () => {
-    const [c, cm] = await Promise.all([
+    const [c, cm, cat] = await Promise.all([
       supabase.from('channels').select('*'),
       supabase.from('channel_members').select('channel_id, user_id'),
+      supabase.from('channel_categories').select('id, name, kind, position'),
     ])
     if (c.data) setChannels(sortChannels(c.data as Channel[]))
+    if (cat.data) setCategories([...(cat.data as ChannelCategory[])].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name, 'tr')))
     if (cm.data) setDmMembers(cm.data as ChannelMember[])
   }, [])
 
@@ -212,6 +217,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
     const db = supabase
       .channel('csn-db')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'channels' }, () => refreshChannels())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'channel_categories' }, () => refreshChannels())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'channel_members' }, () => refreshChannels())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'roles' }, () => refreshRoles())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'friendships' }, () => refreshFriends())
@@ -414,6 +420,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       profiles,
       members,
       channels,
+      categories,
       roles,
       memberRoles,
       dmMembers,
@@ -453,7 +460,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       dismissRevisionNotice: () => setRevisionNotice(null),
     }
   }, [
-    userId, profiles, members, channels, roles, memberRoles, dmMembers, friendships, presence, effectiveStatus, myStatus,
+    userId, profiles, members, channels, categories, roles, memberRoles, dmMembers, friendships, presence, effectiveStatus, myStatus,
     setMyStatus, updatePresence, refreshProfiles, mode, selectedId, select, openDm, profileOf, userMenu, reloadNotice, pendingRevisions, revisionNotice, serverTheme,
   ])
 

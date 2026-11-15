@@ -7,15 +7,21 @@ import Icon from './Icon'
 /** Revize #19: kategori başlığındaki "+" ile hızlı kanal oluşturma */
 export default function CreateChannelModal({
   kind: initialKind,
+  categoryId: initialCategory = null,
   onClose,
   onCreated,
 }: {
   kind: ChannelKind
+  categoryId?: string | null
   onClose: () => void
   onCreated: (id: string, kind: ChannelKind) => void
 }) {
-  const { channels } = useApp()
+  const { channels, categories } = useApp()
   const [kind, setKind] = useState<ChannelKind>(initialKind)
+  const [categoryId, setCategoryId] = useState<string | null>(initialCategory)
+  const kindCategories = categories.filter((c) => c.kind === kind)
+  // Tür değişince seçili kategori o türe ait değilse kategorisiz yap
+  const catId = kindCategories.some((c) => c.id === categoryId) ? categoryId : null
   const [name, setName] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -32,9 +38,9 @@ export default function CreateChannelModal({
     if (!clean || busy) return
     setBusy(true)
     setError(null)
-    const position = Math.max(-1, ...channels.filter((c) => c.kind === kind).map((c) => c.position)) + 1
+    const position = Math.max(-1, ...channels.filter((c) => c.kind === kind && c.category_id === catId).map((c) => c.position)) + 1
     // insert sonrası .select() kullanılmaz (bkz. 0010); yeni satır ayrıca okunur
-    const { error } = await supabase.from('channels').insert({ name: clean, kind, position })
+    const { error } = await supabase.from('channels').insert({ name: clean, kind, position, category_id: catId })
     if (error) {
       setBusy(false)
       return setError(error.message)
@@ -81,6 +87,17 @@ export default function CreateChannelModal({
             <input autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={40} placeholder={kind === 'text' ? 'yeni-kanal' : 'Sohbet odası'} />
           </div>
         </label>
+        {kindCategories.length > 0 && (
+          <label>
+            Kategori
+            <select value={catId ?? ''} onChange={(e) => setCategoryId(e.target.value || null)}>
+              <option value="">{kind === 'text' ? 'Metin kanalları (kategorisiz)' : 'Ses kanalları (kategorisiz)'}</option>
+              {kindCategories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </label>
+        )}
         {error && <div className="form-error">{error}</div>}
         <div className="dialog-actions">
           <button type="button" className="btn ghost" onClick={onClose}>Vazgeç</button>

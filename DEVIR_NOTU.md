@@ -48,10 +48,11 @@ CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'
 | Revize #23 sesli mesaj (`VoiceRecorder.tsx`): mesaj kutusunda mikrofon düğmesi, en fazla 5 dk, Enter gönder / Esc vazgeç, dalga biçimli oynatıcı; ek `voice/duration/waveform` alanlarıyla saklanır | ✅ Chromium sahte mikrofonla kayıt+oynatma denendi |
 | Masaüstü 0.1.3: Windows başlık çubuğu yerine sayfanın çizdiği temaya uygun çubuk (`titleBarStyle:'hidden'` + `titleBarOverlay`, `initDesktopTitleBar` in `src/lib/desktop.ts`, renkler `csn:titlebar` IPC ile); müzik kartı (`MusicPanel`) hep küçük başlar | ✅ Windows'ta denenmedi |
 | Revize #24 rollere "Soundpad'e ses ekleyebilir" yetkisi (`manage_sounds`, `0018`): yetkili ekler, kendi sesini siler; yöneticiler hepsini | ✅ SQL ile test edildi |
+| Revize #25 kanal kategorileri (`0019`, `channel_categories`, `channels.category_id`): bölüm başlığında 📁+ ile kategori, kategori başlığında + ile içine kanal, ⚙ ile ad değiştir/sil (kanallar silinmez), daraltma bu cihazda hatırlanır; kanal ayarlarından kategori değişir (`CategoryModal.tsx`). Sahip notu: sol alttaki ⚙ doğrudan Ayarlar panelini açar; Herkesi yenile + Uygulama olarak yükle panelin sol menüsünde (`ReloadDialog.tsx`) | ✅ SQL ile test edildi, sahte veriyle ekran görüntüsü |
 | Electron masaüstü uygulaması (`desktop/`), kurulum: Actions → "Masaüstü (Windows)" ya da `desktop-v*` etiketi | ✅ 0.1.1 yayında: https://github.com/barishnc-creator/csn/releases/latest (Actions → "Masaüstü (Windows)" elle başlatılınca `desktop/package.json` sürümüyle yeni Release açar; bu ortamdan etiket push'u engelli) |
 
 ## Migrationlar (sırayla uygulandı)
-`0001_init` → `0002_lock_anon_functions` → `0003_owner_and_revisions` → `0004_dm_kind` → `0005_roles_dm_reactions_pins_profile` → `0006_server_reload` → `0007_friendships` → `0008_tag_banner` → `0009_channel_join_roles` → `0010_channels_select_row_based` → `0011_submit_revisions_perm` → `0012_music` → `0013_soundpad` → `0014_server_theme` → `0015_stickers` → `0016_music_bot` → `0017_bot_settings` → `0018_manage_sounds_perm`
+`0001_init` → `0002_lock_anon_functions` → `0003_owner_and_revisions` → `0004_dm_kind` → `0005_roles_dm_reactions_pins_profile` → `0006_server_reload` → `0007_friendships` → `0008_tag_banner` → `0009_channel_join_roles` → `0010_channels_select_row_based` → `0011_submit_revisions_perm` → `0012_music` → `0013_soundpad` → `0014_server_theme` → `0015_stickers` → `0016_music_bot` → `0017_bot_settings` → `0018_manage_sounds_perm` → `0019_channel_categories`
 
 ## Bekleyen karar
 - Masaüstü .exe imzasız: Windows 11 "Akıllı Uygulama Denetimi" açık olan bilgisayarlarda engelleniyor (egunesx'te oldu). Geçici çözüm: PWA olarak yükleme (⚙️ → Uygulama olarak yükle). Kalıcı çözüm seçenekleri (Microsoft Store, ücretsiz bireysel hesap / kod imzalama sertifikası) kullanıcıya sunuldu; **"şimdilik kalsın" dedi**, sormadan başlama.
@@ -61,7 +62,7 @@ CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'
 - Bazı migrationlarda (politika silme) Supabase MCP kullanıcıdan onay ister; yanıt gelmezse zaman aşımı olur, kullanıcıya söyle.
 
 ## Sıradaki işler
-- Onaylı revize yok (#17, #20-#24 bitti). Yeni istek için `select * from revisions where status='approved'`.
+- Onaylı revize yok (#17, #20-#25 bitti). Yeni istek için `select * from revisions where status='approved'`.
 - Masaüstü 0.1.3 derlemesi bu oturumda tetiklendi; Releases'ta olduğunu doğrula. Kullanıcı canlıda başlık çubuğunu denemeli.
 
 ## Sıradaki adaylar

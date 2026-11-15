@@ -1,6 +1,5 @@
 import { confirmDialog } from '../lib/dialog'
 import { useEffect, useState } from 'react'
-import { canInstall, isStandalone, onInstallChange, promptInstall } from '../lib/install'
 import { useApp } from '../lib/store'
 import { supabase } from '../lib/supabase'
 import { useVoice } from '../voice/VoiceContext'
@@ -9,10 +8,12 @@ import Icon from './Icon'
 import { STATUS_OPTIONS, statusLabel } from '../lib/status'
 import ChannelSettingsModal from './ChannelSettingsModal'
 import CreateChannelModal from './CreateChannelModal'
+import CategoryModal from './CategoryModal'
 import SoundpadButton from './Soundpad'
 import VoiceExtrasHost from './VoiceExtrasHost'
 import { MUSIC_BOT_ID, useMusicRows } from '../voice/music'
 import type { SettingsTab } from './SettingsModal'
+import type { Channel, ChannelCategory } from '../lib/types'
 
 interface Props {
   currentId: string | null
@@ -24,9 +25,26 @@ interface Props {
 }
 
 export default function ChannelSidebar({ currentId, onSelect, unread, mentions, onOpenSettings, onFriends }: Props) {
-  const { channels, presence, profiles, can, openProfile, openUserMenu, canJoin } = useApp()
+  const { channels, categories, presence, profiles, can, openProfile, openUserMenu, canJoin } = useApp()
   const [chSettings, setChSettings] = useState<string | null>(null)
-  const [creating, setCreating] = useState<'text' | 'voice' | null>(null)
+  const [creating, setCreating] = useState<{ kind: 'text' | 'voice'; categoryId: string | null } | null>(null)
+  const [catModal, setCatModal] = useState<{ kind: 'text' | 'voice'; category?: ChannelCategory } | null>(null)
+  // Daraltılan kategoriler bu cihazda hatırlanır
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem('csn.collapsedCats') ?? '[]') as string[])
+    } catch {
+      return new Set()
+    }
+  })
+  const toggleCat = (id: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      try { localStorage.setItem('csn.collapsedCats', JSON.stringify([...next])) } catch { /* yok say */ }
+      return next
+    })
   const [pendingSelect, setPendingSelect] = useState<string | null>(null)
   // Yeni kanal realtime ile listeye düşünce ona geç
   useEffect(() => {
@@ -41,26 +59,7 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
   const voiceChannels = channels.filter((c) => c.kind === 'voice')
   const speaking = new Set(voice.participants.filter((p) => p.speaking).map((p) => p.id))
 
-  return (
-    <aside className="sidebar">
-      <header className="sidebar-header">
-        <div className="sidebar-title">
-          <span className="server-mini">C</span>
-          <span>CSN</span>
-        </div>
-        <div className="sidebar-header-actions">
-          <button className="icon-btn" title="Arkadaşlar" onClick={onFriends}><Icon name="friends" size={18} /></button>
-        </div>
-      </header>
-
-      <div className="channel-scroll">
-        <div className="category-row">
-          <div className="category">Metin kanalları</div>
-          {can('manage_channels') && (
-            <button className="category-add" title="Kanal oluştur" onClick={() => setCreating('text')}><Icon name="plus" size={15} /></button>
-          )}
-        </div>
-        {text.map((c) => {
+  const renderText = (c: Channel) => {
           const n = unread[c.id] ?? 0
           const m = mentions[c.id] ?? 0
           return (
@@ -82,15 +81,9 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
               )}
             </button>
           )
-        })}
+  }
 
-        <div className="category-row">
-          <div className="category">Ses kanalları</div>
-          {can('manage_channels') && (
-            <button className="category-add" title="Kanal oluştur" onClick={() => setCreating('voice')}><Icon name="plus" size={15} /></button>
-          )}
-        </div>
-        {voiceChannels.map((c) => {
+  const renderVoice = (c: Channel) => {
           const inside = Object.values(presence).filter((p) => p.voice_channel_id === c.id)
           return (
             <div key={c.id}>
@@ -141,6 +134,63 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
               )}
             </div>
           )
+  }
+
+  return (
+    <aside className="sidebar">
+      <header className="sidebar-header">
+        <div className="sidebar-title">
+          <span className="server-mini">C</span>
+          <span>CSN</span>
+        </div>
+        <div className="sidebar-header-actions">
+          <button className="icon-btn" title="Arkadaşlar" onClick={onFriends}><Icon name="friends" size={18} /></button>
+        </div>
+      </header>
+
+      <div className="channel-scroll">
+        {(['text', 'voice'] as const).map((kind) => {
+          const list = kind === 'text' ? text : voiceChannels
+          const render = kind === 'text' ? renderText : renderVoice
+          const known = new Set(categories.map((g) => g.id))
+          const loose = list.filter((c) => !c.category_id || !known.has(c.category_id))
+          return (
+            <div key={kind} className="channel-section">
+              <div className="category-row">
+                <div className="category">{kind === 'text' ? 'Metin kanalları' : 'Ses kanalları'}</div>
+                {can('manage_channels') && (
+                  <>
+                    <button className="category-add" title="Kategori oluştur" onClick={() => setCatModal({ kind })}><Icon name="folderPlus" size={15} /></button>
+                    <button className="category-add" title="Kanal oluştur" onClick={() => setCreating({ kind, categoryId: null })}><Icon name="plus" size={15} /></button>
+                  </>
+                )}
+              </div>
+              {loose.map(render)}
+              {categories.filter((g) => g.kind === kind).map((g) => {
+                const inCat = list.filter((c) => c.category_id === g.id)
+                const isCollapsed = collapsed.has(g.id)
+                return (
+                  <div key={g.id} className="channel-category">
+                    <div className="category-row sub">
+                      <button className="category toggle" onClick={() => toggleCat(g.id)} title={isCollapsed ? 'Aç' : 'Daralt'}>
+                        <Icon name={isCollapsed ? 'chevronRight' : 'chevronDown'} size={12} /> {g.name}
+                      </button>
+                      {can('manage_channels') && (
+                        <>
+                          <button className="category-add" title="Kategoriyi düzenle" onClick={() => setCatModal({ kind, category: g })}><Icon name="gear" size={13} /></button>
+                          <button className="category-add" title={`${g.name} içinde kanal oluştur`} onClick={() => setCreating({ kind, categoryId: g.id })}><Icon name="plus" size={15} /></button>
+                        </>
+                      )}
+                    </div>
+                    {isCollapsed
+                      ? inCat.filter((c) => c.id === currentId || voice.channelId === c.id).map(render)
+                      : inCat.map(render)}
+                    {!isCollapsed && inCat.length === 0 && <div className="category-empty">Henüz kanal yok</div>}
+                  </div>
+                )
+              })}
+            </div>
+          )
         })}
       </div>
 
@@ -149,46 +199,15 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
 
       {creating && (
         <CreateChannelModal
-          kind={creating}
+          kind={creating.kind}
+          categoryId={creating.categoryId}
           onClose={() => setCreating(null)}
           onCreated={(id, k) => { if (k === 'text') setPendingSelect(id) }}
         />
       )}
+      {catModal && <CategoryModal kind={catModal.kind} category={catModal.category} onClose={() => setCatModal(null)} />}
       {chSettings && <ChannelSettingsModal channelId={chSettings} onClose={() => setChSettings(null)} />}
     </aside>
-  )
-}
-
-function ReloadDialog({ onClose }: { onClose: () => void }) {
-  const [note, setNote] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  async function send() {
-    setBusy(true)
-    const { error } = await supabase.rpc('broadcast_reload', { note: note.trim() || null })
-    setBusy(false)
-    if (error) setError(error.message)
-    else onClose()
-  }
-  return (
-    <div className="modal-backdrop dim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="dialog">
-        <div className="dialog-head">
-          <h3>Herkesi yenile</h3>
-          <button className="icon-btn" onClick={onClose} title="Kapat"><Icon name="x" /></button>
-        </div>
-        <p className="muted">CSN'yi açık tutan herkesin ekranı 5 saniye içinde yenilenir ve yeni sürüm yüklenir. Sesli sohbette olanların bağlantısı koparılmaz; onlara bir uyarı gösterilir.</p>
-        <label>
-          Kısa not (isteğe bağlı)
-          <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} placeholder="ör. Emoji tepkileri geldi!" autoFocus />
-        </label>
-        {error && <div className="form-error">{error}</div>}
-        <div className="dialog-actions">
-          <button className="btn ghost" onClick={onClose}>Vazgeç</button>
-          <button className="btn primary" onClick={send} disabled={busy}><Icon name="refresh" size={16} /> Yenile</button>
-        </div>
-      </div>
-    </div>
   )
 }
 
@@ -225,27 +244,16 @@ export function VoiceBar() {
 }
 
 export function UserPanel({ onOpenSettings }: { onOpenSettings: (tab: SettingsTab) => void }) {
-  const { me, userId, myStatus, myChosenStatus: myChosen, setMyStatus, openProfile, isOwner, can, myRole } = useApp()
+  const { me, userId, myStatus, myChosenStatus: myChosen, setMyStatus, openProfile } = useApp()
   const voice = useVoice()
   const [statusMenu, setStatusMenu] = useState(false)
-  // Tek ayarlar menüsü (sol alttaki çark): sunucu ve kullanıcı ayarları birlikte
-  const [menu, setMenu] = useState(false)
-  const [reloadOpen, setReloadOpen] = useState(false)
-  const [installable, setInstallable] = useState(canInstall())
-  useEffect(() => {
-    const off = onInstallChange(() => setInstallable(canInstall()))
-    return () => {
-      off()
-    }
-  }, [])
-  const open = (t: SettingsTab) => { setMenu(false); onOpenSettings(t) }
 
   return (
     <div className="user-panel">
       <button className="icon-btn logout-btn" title="Çıkış yap" onClick={async () => (await confirmDialog({ title: 'Çıkış yapılsın mı?', message: 'CSN hesabından çıkış yapacaksın.', confirmText: 'Çıkış yap', danger: true })) && supabase.auth.signOut()}>
         <Icon name="logout" size={18} />
       </button>
-      <button className="user-panel-me" onClick={() => { setMenu(false); setStatusMenu((s) => !s) }}>
+      <button className="user-panel-me" onClick={() => setStatusMenu((s) => !s)}>
         <Avatar profile={me} userId={userId} size={32} status={myStatus} speaking={voice.pttActive} />
         <div className="user-panel-text">
           <div className="user-panel-name">{me?.display_name ?? '…'}</div>
@@ -271,43 +279,9 @@ export function UserPanel({ onOpenSettings }: { onOpenSettings: (tab: SettingsTa
       <button className={`icon-btn${voice.deafened ? ' danger' : ''}`} onClick={voice.toggleDeafen} title={voice.deafened ? 'Sesi aç' : 'Sağırlaştır'}>
         <Icon name={voice.deafened ? 'headphonesOff' : 'headphones'} />
       </button>
-      <button className={`icon-btn${menu ? ' active' : ''}`} onClick={() => { setStatusMenu(false); setMenu((m) => !m) }} title="Ayarlar">
+      <button className="icon-btn" onClick={() => { setStatusMenu(false); onOpenSettings('profile') }} title="Ayarlar">
         <Icon name="gear" />
       </button>
-      {menu && (
-        <div className="dropdown settings-menu" onMouseLeave={() => setMenu(false)}>
-          {isOwner && (
-            <button className="accent" onClick={() => { setMenu(false); setReloadOpen(true) }}>
-              <Icon name="refresh" size={16} /> Herkesi yenile
-            </button>
-          )}
-          {can('create_invites') && (
-            <button onClick={() => open('invites')}><Icon name="users" size={16} /> Arkadaş davet et</button>
-          )}
-          {can('manage_channels') && (
-            <button onClick={() => open('channels')}><Icon name="plusCircle" size={16} /> Kanalları yönet</button>
-          )}
-          {can('submit_revisions') && (
-            <button onClick={() => open('revisions')}><Icon name="file" size={16} /> Revizeler</button>
-          )}
-          {myRole === 'admin' && (
-            <button onClick={() => open('roles')}><Icon name="shield" size={16} /> Roller</button>
-          )}
-          {myRole === 'admin' && (
-            <button onClick={() => open('members')}><Icon name="users" size={16} /> Üyeler</button>
-          )}
-          {(isOwner || can('create_invites') || can('manage_channels') || can('submit_revisions') || myRole === 'admin') && <div className="dropdown-sep" />}
-          <button onClick={() => open('profile')}><Icon name="edit" size={16} /> Profilimi düzenle</button>
-          <button onClick={() => open('voice')}><Icon name="mic" size={16} /> Ses ve görüntü</button>
-          <button onClick={() => open('appearance')}><Icon name="sparkles" size={16} /> Görünüm</button>
-          {installable && !isStandalone() && (
-            <button className="accent" onClick={() => { setMenu(false); promptInstall() }}>
-              <Icon name="download" size={16} /> Uygulama olarak yükle
-            </button>
-          )}
-        </div>
-      )}
-      {reloadOpen && <ReloadDialog onClose={() => setReloadOpen(false)} />}
     </div>
   )
 }
