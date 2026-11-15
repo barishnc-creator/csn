@@ -5,6 +5,9 @@ import type { Channel } from '../lib/types'
 import { useVoice, type VoiceParticipant } from '../voice/VoiceContext'
 import Avatar from './Avatar'
 import Icon from './Icon'
+import MusicPanel, { MusicButton } from './MusicPanel'
+import SoundpadButton from './Soundpad'
+import VoiceExtrasHost from './VoiceExtrasHost'
 
 interface Tile {
   key: string
@@ -89,7 +92,9 @@ export function CallStage({ compact }: { compact?: boolean }) {
           <button className="btn ghost small" onClick={() => setTheater(false)}><Icon name="back" size={16} /> Pencereden çık</button>
         </div>
       )}
+      <VoiceExtrasHost />
       <div className={`voice-stage${focused ? ' has-focus' : ''}`}>
+        <MusicPanel />
         {focused && (
           <div className="focus-area">
             <TileView tile={focused} big onClick={() => { setFocus(null); setTheater(false) }} onTheater={() => setTheater((t) => !t)} theater={isTheater} />
@@ -114,6 +119,8 @@ export function CallStage({ compact }: { compact?: boolean }) {
         <button className={`round-btn${voice.deafened ? ' danger' : ''}`} onClick={voice.toggleDeafen} title="Sağırlaştır">
           <Icon name={voice.deafened ? 'headphonesOff' : 'headphones'} size={22} />
         </button>
+        <MusicButton />
+        <SoundpadButton variant="round" />
         <button className="round-btn danger solid" onClick={voice.leave} title="Ayrıl">
           <Icon name="phoneOff" size={22} />
         </button>

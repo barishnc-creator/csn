@@ -7,6 +7,8 @@ import Avatar from './Avatar'
 import Icon from './Icon'
 import { STATUS_OPTIONS, statusLabel } from '../lib/status'
 import ChannelSettingsModal from './ChannelSettingsModal'
+import SoundpadButton from './Soundpad'
+import VoiceExtrasHost from './VoiceExtrasHost'
 import type { SettingsTab } from './SettingsModal'
 
 interface Props {
@@ -215,6 +217,7 @@ export function VoiceBar() {
   const label = ch?.kind === 'dm' ? `@${profiles[dmPartner(ch.id) ?? '']?.display_name ?? 'Görüşme'}` : ch?.name ?? ''
   return (
     <div className="voice-bar">
+      <VoiceExtrasHost />
       <div className="voice-bar-top">
         <div>
           <div className="voice-bar-status">
@@ -233,6 +236,7 @@ export function VoiceBar() {
         <button className={`pill-btn${voice.screenOn ? ' on' : ''}`} onClick={voice.toggleScreen} title="Ekran paylaş">
           <Icon name="screen" size={18} />
         </button>
+        <SoundpadButton variant="pill" />
       </div>
     </div>
   )

@@ -6,6 +6,8 @@ import type { Attachment, Channel, Message } from '../lib/types'
 import Avatar from './Avatar'
 import Icon from './Icon'
 import GifPicker from './GifPicker'
+import { useVoice } from '../voice/VoiceContext'
+import { runMusicCommand } from '../voice/musicCommands'
 
 const MAX_FILE = 25 * 1024 * 1024
 const TYPING_TTL = 4000
@@ -25,6 +27,8 @@ export default function Composer({ channel, placeholder, replyTo, onCancelReply,
   const [files, setFiles] = useState<File[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [info, setInfo] = useState<string | null>(null)
+  const voice = useVoice()
   const [dragging, setDragging] = useState(false)
   const [gifOpen, setGifOpen] = useState(false)
   const [typers, setTypers] = useState<Record<string, number>>({})
@@ -60,6 +64,13 @@ export default function Composer({ channel, placeholder, replyTo, onCancelReply,
     if (replyTo) input.current?.focus()
   }, [replyTo])
 
+  // Müzik komutu onayı birkaç saniye sonra kaybolsun
+  useEffect(() => {
+    if (!info) return
+    const t = window.setTimeout(() => setInfo(null), 6000)
+    return () => window.clearTimeout(t)
+  }, [info])
+
   function notifyTyping() {
     const now = Date.now()
     if (now - lastTypingSent.current < 2500) return
@@ -79,6 +90,20 @@ export default function Composer({ channel, placeholder, replyTo, onCancelReply,
     if ((!content && files.length === 0) || busy) return
     setBusy(true)
     setError(null)
+    setInfo(null)
+    // Müzik komutları (/çal, /geç…) mesaj olarak gönderilmez
+    if (content.startsWith('/') && files.length === 0) {
+      const r = await runMusicCommand(content, { voiceChannelId: voice.channelId, userId })
+      if (r.handled) {
+        if (r.ok) {
+          setText('')
+          setInfo(r.message ?? null)
+        } else setError(r.message ?? 'Komut çalıştırılamadı')
+        setBusy(false)
+        requestAnimationFrame(() => input.current?.focus())
+        return
+      }
+    }
     try {
       const attachments: Attachment[] = []
       for (const f of files) {
@@ -271,6 +296,11 @@ export default function Composer({ channel, placeholder, replyTo, onCancelReply,
       <div className="composer-footer">
         {error ? (
           <span className="form-error inline">{error}</span>
+        ) : info ? (
+          <span className="composer-info">
+            {info}
+            <button className="icon-btn small" onClick={() => setInfo(null)} title="Kapat"><Icon name="x" size={12} /></button>
+          </span>
         ) : typingNames.length > 0 ? (
           <span className="typing">
             <span className="typing-dots"><i /><i /><i /></span>
