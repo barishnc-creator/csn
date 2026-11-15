@@ -39,7 +39,8 @@ export default function MusicPanel() {
   const snap = useMusic()
   const [, tick] = useState(0)
   const [showQueue, setShowQueue] = useState(false)
-  const [collapsed, setCollapsed] = useState(false)
+  // Hep küçük başlar; yalnız tıklanınca açılır
+  const [collapsed, setCollapsed] = useState(true)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
@@ -81,10 +82,15 @@ export default function MusicPanel() {
 
   if (collapsed) {
     return (
-      <button className="music-chip" onClick={() => setCollapsed(false)} title="Müzik panelini aç">
-        <span className="music-eq" data-paused={row?.paused ? '1' : undefined}><i /><i /><i /></span>
-        <span className="music-chip-title">{current.title}</span>
-      </button>
+      <div className="music-chip">
+        {snap.blocked && !snap.localMuted && (
+          <button className="music-chip-start" onClick={() => music.unblock()} title="Tarayıcı otomatik oynatmayı engelledi">▶ Başlat</button>
+        )}
+        <button className="music-chip-open" onClick={() => setCollapsed(false)} title="Müzik panelini aç">
+          <span className="music-eq" data-paused={row?.paused ? '1' : undefined}><i /><i /><i /></span>
+          <span className="music-chip-title">{current.title}</span>
+        </button>
+      </div>
     )
   }
 
