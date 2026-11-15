@@ -18,7 +18,7 @@ import UserContextMenu from './UserContextMenu'
 import Icon from './Icon'
 
 export default function Layout() {
-  const { channels, userId, profiles, me, myStatus, mode, setMode, selectedId, select, can, dmPartner, presence, profileOf, openProfile, reloadNotice, dismissReload } = useApp()
+  const { channels, userId, profiles, me, myStatus, mode, setMode, selectedId, select, can, dmPartner, presence, profileOf, openProfile, reloadNotice, dismissReload, revisionNotice, dismissRevisionNotice } = useApp()
   const voice = useVoice()
   // Revize #8: sağdaki üye paneli her ekranda; tercih hatırlanır
   const [showMembers, setShowMembersState] = useState(() => {
@@ -220,7 +220,7 @@ export default function Layout() {
         )}
       </main>
 
-      {showMembers && <MemberList />}
+      {showMembers && <MemberList onOpenRevisions={() => setSettings('revisions')} />}
       {settings && <SettingsModal initialTab={settings} onClose={() => setSettings(null)} />}
       {profileOf && <UserProfileModal userId={profileOf} onClose={() => openProfile(null)} onEditProfile={() => { openProfile(null); setSettings('profile') }} />}
 
@@ -255,6 +255,18 @@ export default function Layout() {
           </div>
           <button className="btn primary small" onClick={hardReload}>Şimdi yenile</button>
           {countdown === null && <button className="btn ghost small" onClick={dismissReload}>Sonra</button>}
+        </div>
+      )}
+
+      {revisionNotice && (
+        <div className="revision-toast">
+          <span className="revision-toast-icon"><Icon name="bell" size={18} /></span>
+          <div className="revision-toast-text">
+            <strong>Yeni revize onayını bekliyor</strong>
+            <span className="muted small">{profiles[revisionNotice.by]?.display_name ?? 'Biri'}: {revisionNotice.title}</span>
+          </div>
+          <button className="btn primary small" onClick={() => { dismissRevisionNotice(); setSettings('revisions') }}>İncele</button>
+          <button className="icon-btn small" onClick={dismissRevisionNotice} title="Kapat"><Icon name="x" size={16} /></button>
         </div>
       )}
 

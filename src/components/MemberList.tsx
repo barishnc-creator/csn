@@ -5,8 +5,8 @@ import Icon from './Icon'
 
 const baseLabel = { admin: 'Yöneticiler', mod: 'Moderatörler', member: 'Çevrimiçi' } as const
 
-export default function MemberList() {
-  const { members, profiles, presence, roles, rolesOf, nameColor, openProfile, openUserMenu, userId } = useApp()
+export default function MemberList({ onOpenRevisions }: { onOpenRevisions?: () => void }) {
+  const { members, profiles, presence, roles, rolesOf, nameColor, openProfile, openUserMenu, userId, pendingRevisions, isOwner } = useApp()
   const isOn = (uid: string) => !!presence[uid] && (presence[uid].status !== 'invisible' || uid === userId)
   const name = (id: string) => profiles[id]?.display_name ?? ''
   const byName = (a: Member, b: Member) => name(a.user_id).localeCompare(name(b.user_id), 'tr')
@@ -35,6 +35,23 @@ export default function MemberList() {
 
   return (
     <aside className="member-list">
+      <header className="member-list-head">
+        <div className="member-list-title">
+          <Icon name="friends" size={16} />
+          <span>Sunucu üyeleri</span>
+        </div>
+        <div className="member-list-stats">
+          <span className="stat-pill online"><i /> {online.length} çevrimiçi</span>
+          <span className="stat-pill">{members.length} üye</span>
+        </div>
+        {isOwner && pendingRevisions > 0 && (
+          <button className="revision-alert" onClick={onOpenRevisions}>
+            <Icon name="bell" size={15} />
+            <span><strong>{pendingRevisions}</strong> revize onay bekliyor</span>
+            <span className="revision-alert-go">Görüntüle ›</span>
+          </button>
+        )}
+      </header>
       {groups.map((g) => (
         <section key={g.key}>
           <div className="category">{g.label} — {g.list.length}</div>

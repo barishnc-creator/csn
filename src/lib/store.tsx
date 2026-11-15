@@ -67,6 +67,10 @@ interface AppState {
   openUserMenu: (uid: string | null, x?: number, y?: number) => void
   openProfile: (uid: string | null) => void
   reloadNotice: ReloadNotice | null
+  /** Sahip için: onay bekleyen revize sayısı ve yeni gelen revize uyarısı */
+  pendingRevisions: number
+  revisionNotice: { id: number; title: string; by: string } | null
+  dismissRevisionNotice: () => void
   dismissReload: () => void
 }
 
@@ -114,6 +118,8 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
   const [profileOf, setProfileOf] = useState<string | null>(null)
   const [userMenu, setUserMenu] = useState<{ uid: string; x: number; y: number } | null>(null)
   const [reloadNotice, setReloadNotice] = useState<ReloadNotice | null>(null)
+  const [pendingRevisions, setPendingRevisions] = useState(0)
+  const [revisionNotice, setRevisionNotice] = useState<{ id: number; title: string; by: string } | null>(null)
   const reloadVersion = useRef<number | null>(null)
   const [myStatus, setMyStatusState] = useState<UserStatus>(() => {
     const s = readLS(STATUS_KEY)
@@ -221,6 +227,38 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       supabase.removeChannel(db)
     }
   }, [refreshProfiles, refreshChannels, refreshRoles, refreshFriends, userId])
+
+  // Revizeler: onay bekleyenleri say; sahibe yeni gelen revizeyi bildir
+  const amOwner = members.find((m) => m.user_id === userId)?.is_owner ?? false
+  useEffect(() => {
+    if (!amOwner) {
+      setPendingRevisions(0)
+      return
+    }
+    const count = async () => {
+      const { count: n } = await supabase.from('revisions').select('id', { count: 'exact', head: true }).eq('status', 'pending')
+      setPendingRevisions(n ?? 0)
+    }
+    count()
+    const ch = supabase
+      .channel('csn-revisions-owner')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'revisions' }, (p) => {
+        count()
+        if (p.eventType === 'INSERT') {
+          const r = p.new as { id: number; title: string; created_by: string; status: string }
+          if (r.status === 'pending' && r.created_by !== userId) {
+            setRevisionNotice({ id: r.id, title: r.title, by: r.created_by })
+            if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+              new Notification('Yeni revize onayını bekliyor', { body: r.title, tag: `csn-rev-${r.id}` })
+            }
+          }
+        }
+      })
+      .subscribe()
+    return () => {
+      supabase.removeChannel(ch)
+    }
+  }, [amOwner, userId])
 
   // Yeni sürüm denetimi: dakikada bir ve pencereye dönüldüğünde
   useEffect(() => {
@@ -378,10 +416,13 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
       openUserMenu: (uid, x = 0, y = 0) => setUserMenu(uid ? { uid, x, y } : null),
       reloadNotice,
       dismissReload: () => setReloadNotice(null),
+      pendingRevisions,
+      revisionNotice,
+      dismissRevisionNotice: () => setRevisionNotice(null),
     }
   }, [
     userId, profiles, members, channels, roles, memberRoles, dmMembers, friendships, presence, effectiveStatus, myStatus,
-    setMyStatus, updatePresence, refreshProfiles, mode, selectedId, select, openDm, profileOf, userMenu, reloadNotice,
+    setMyStatus, updatePresence, refreshProfiles, mode, selectedId, select, openDm, profileOf, userMenu, reloadNotice, pendingRevisions, revisionNotice,
   ])
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
