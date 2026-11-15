@@ -61,9 +61,14 @@ CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'
 - Supabase'te `insert(...).select()` (RETURNING) kullanırken okuma kuralının yeni satırı görebildiğinden emin ol (kanallar için `0010` ile düzeltildi).
 - Bazı migrationlarda (politika silme) Supabase MCP kullanıcıdan onay ister; yanıt gelmezse zaman aşımı olur, kullanıcıya söyle.
 
-## Sıradaki işler
-- Onaylı revize yok (#17, #20-#25 bitti). Yeni istek için `select * from revisions where status='approved'`.
-- Masaüstü 0.1.3 derlemesi bu oturumda tetiklendi; Releases'ta olduğunu doğrula. Kullanıcı canlıda başlık çubuğunu denemeli.
+## Sıradaki işler (onaylı revizeler — sahip onaylı, doğrulandı, henüz `approved`)
+- **#26 Oda ayarları:** (a) ses odasına kişi sınırı (`channels.user_limit int null`, kanal ayarlarında; yöneticiler sınırsız girer). Sınır `supabase/functions/livekit-token`'da da uygulanmalı (presence sunucuda yok → LiveKit RoomService `listParticipants` ile say, ya da yalnız istemcide). (b) kanal listesinde oda adının yanında `içerideki/sınır` rozeti. (c) yeni rol yetkisi `move_members` ("Üyeleri taşı", `roles_permissions_check`'e ekle, `0018` örneği). (d) sağ tık menüsünde (`UserContextMenu.tsx`) "Taşı ›" alt menüsü → ses odaları listesi. Taşıma: yetki kontrollü RPC/tablo (ör. `voice_moves` insert, RLS `has_perm('move_members')`), hedef kullanıcı realtime ile dinleyip `voice.join(channel)` yapar; ya da Edge Function + LiveKit `moveParticipant`. Yalnız ses kanalındaki kişide göster.
+- **#27 Kanal başlıkları:** "METİN KANALLARI" / "SES KANALLARI" ve kategori başlıkları üye panelindeki gibi belirgin olsun (bkz. `styles.css` sonundaki "Revize #17" ve "Revize #25" blokları: `.member-group-head`, ikon kutucuğu, sayı rozeti, gradyan çizgi). `ChannelSidebar.tsx` (`channel-section`, `category-row`, `category-row.sub`).
+- **#28 Sağ panel:** Doğrudan mesajlar (DM modu) açıkken sağda sunucu üyeleri değil, **arkadaşlarımın etkinliği** paneli: arkadaş listesi (`friendships` accepted), çevrimiçi olanlar üstte, hangi sunucuda (şu an tek sunucu: CSN) ve ses kanalındaysa hangi kanal (presence `voice_channel_id` → kanal adı), tıklayınca profil/DM. Sunucu modunda üye paneli kalır. Panelin nerede çizildiğine bak: `Layout.tsx` (MemberList).
+- Her revizede: `in_progress` → iş → `done` + `dev_note`; `npm run build`; push; #yenilikler'e bot hesabıyla yaz.
+
+## Kullanıcıyla konuşulan, bekleyen
+- Uygulama adı değişikliği düşünülüyor (CSN = "couissin"). 10 öneri verildi (Kuzenhane, Cousy, Kuzn, Cuzzo, Tayfa, Cousinverse, Kuzen.io, Cousin Club, Familia, CSN+). Kullanıcı seçince: `index.html` başlığı, `public/manifest`, `desktop/package.json` productName, sol üst logo harfi, metinler.
 
 ## Sıradaki adaylar
 - Müzik botu canlıda denenmeli (iki kişiyle: sıra, tekrar, konsol). Bot hesabı `b0700000-0000-4000-8000-00000000b070` (`src/lib/bots.ts`)
