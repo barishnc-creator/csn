@@ -71,7 +71,7 @@ export default function ChatView({ channel, onToggleMembers }: { channel: Channe
       })
 
     const sub = supabase
-      .channel(`chat-${channel.id}`)
+      .channel(`chat-${channel.id}`, { config: { private: true } })
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'messages', filter: `channel_id=eq.${channel.id}` },
@@ -337,7 +337,7 @@ function PinsPanel({ channelId, onClose, onJump }: { channelId: string; onClose:
         .then(({ data }) => alive && setPins((data ?? []) as Message[]))
     load()
     const ch = supabase
-      .channel(`pins-${channelId}`)
+      .channel(`pins-${channelId}`, { config: { private: true } })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages', filter: `channel_id=eq.${channelId}` }, load)
       .subscribe()
     return () => {

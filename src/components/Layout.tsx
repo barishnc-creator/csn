@@ -82,7 +82,7 @@ export default function Layout() {
   canRef.current = can
   useEffect(() => {
     const ch = supabase
-      .channel('csn-unread')
+      .channel('csn-unread', { config: { private: true } })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (p) => {
         const msg = p.new as Message
         if (msg.author_id === userId) return
@@ -115,7 +115,7 @@ export default function Layout() {
   voiceRef.current = voice
   useEffect(() => {
     const ch = supabase
-      .channel('csn-voice-moves')
+      .channel('csn-voice-moves', { config: { private: true } })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'voice_moves', filter: `target=eq.${userId}` }, (p) => {
         const row = p.new as { channel_id: string }
         const v = voiceRef.current

@@ -55,7 +55,7 @@ function start() {
   started = true
   load()
   supabase
-    .channel('stickers-list')
+    .channel('stickers-list', { config: { private: true } })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'stickers' }, (p) => {
       if (p.eventType === 'DELETE') list = list.filter((s) => s.id !== (p.old as Sticker).id)
       else if (p.eventType === 'INSERT') {

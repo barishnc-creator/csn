@@ -47,7 +47,7 @@ export default function Composer({ channel, placeholder, replyTo, onCancelReply,
 
   // "yazıyor…" göstergesi
   useEffect(() => {
-    const ch = supabase.channel(`typing-${channel.id}`)
+    const ch = supabase.channel(`typing-${channel.id}`, { config: { private: true } })
     ch.on('broadcast', { event: 'typing' }, ({ payload }) => {
       const id = payload?.user_id as string | undefined
       if (!id || id === userId) return

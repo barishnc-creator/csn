@@ -43,7 +43,7 @@ export default function RevisionsTab() {
   useEffect(() => {
     load()
     const ch = supabase
-      .channel('csn-revisions')
+      .channel('csn-revisions', { config: { private: true } })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'revisions' }, () => load())
       .subscribe()
     return () => {

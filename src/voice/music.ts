@@ -363,7 +363,7 @@ class MusicEngine {
       })
       .catch(() => {})
     this.sub = supabase
-      .channel(`music-${channelId}`)
+      .channel(`music-${channelId}`, { config: { private: true } })
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'music_state', filter: `channel_id=eq.${channelId}` },
@@ -669,7 +669,7 @@ class MusicActivity {
         for (const r of (data ?? []) as MusicRow[]) this.put(r)
       })
     supabase
-      .channel('music-activity')
+      .channel('music-activity', { config: { private: true } })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'music_state' }, (p) => {
         if (p.eventType === 'DELETE') {
           const id = (p.old as MusicRow).channel_id

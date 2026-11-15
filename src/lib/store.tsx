@@ -215,7 +215,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
     load()
 
     const db = supabase
-      .channel('csn-db')
+      .channel('csn-db', { config: { private: true } })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'channels' }, () => refreshChannels())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'channel_categories' }, () => refreshChannels())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'channel_members' }, () => refreshChannels())
@@ -272,7 +272,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
     }
     count()
     const ch = supabase
-      .channel('csn-revisions-owner')
+      .channel('csn-revisions-owner', { config: { private: true } })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'revisions' }, (p) => {
         count()
         if (p.eventType === 'INSERT') {
@@ -314,7 +314,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
 
   // Presence: kim çevrimiçi, kim hangi ses kanalında
   useEffect(() => {
-    const ch = supabase.channel('csn-presence', { config: { presence: { key: userId } } })
+    const ch = supabase.channel('csn-presence', { config: { private: true, presence: { key: userId } } })
     presenceRef.current = ch
     const sync = () => {
       const state = ch.presenceState<PresenceState>()

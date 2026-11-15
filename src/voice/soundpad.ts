@@ -79,7 +79,7 @@ class SoundpadEngine {
     this.leaveRoom()
     this.channelId = channelId
     this.roomSub = supabase
-      .channel(`soundpad-${channelId}`, { config: { broadcast: { self: false } } })
+      .channel(`soundpad-${channelId}`, { config: { private: true, broadcast: { self: false } } })
       .on('broadcast', { event: 'play' }, ({ payload }) => {
         const id = payload?.id as string | undefined
         const by = payload?.by as string | undefined
@@ -114,7 +114,7 @@ class SoundpadEngine {
     this.soundsLoaded = true
     this.reload()
     supabase
-      .channel('sounds-list')
+      .channel('sounds-list', { config: { private: true } })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'sounds' }, () => this.reload())
       .subscribe()
   }
