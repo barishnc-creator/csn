@@ -13,11 +13,32 @@ export default function UserContextMenu() {
   const ref = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ left: number; top: number }>({ left: 0, top: 0 })
   const [error, setError] = useState<string | null>(null)
+  const [subOpen, setSubOpen] = useState(false)
+  const [subPos, setSubPos] = useState<{ left: number; top: number }>({ left: 0, top: 0 })
+  const [roleQuery, setRoleQuery] = useState('')
+  const rolesItem = useRef<HTMLButtonElement>(null)
+  const subRef = useRef<HTMLDivElement>(null)
+  const closeTimer = useRef<number | null>(null)
+
+  function cancelCloseSub() {
+    if (closeTimer.current) window.clearTimeout(closeTimer.current)
+    closeTimer.current = null
+  }
+  function scheduleCloseSub() {
+    cancelCloseSub()
+    closeTimer.current = window.setTimeout(() => setSubOpen(false), 220)
+  }
+  function openSub() {
+    cancelCloseSub()
+    setSubOpen(true)
+  }
 
   const uid = userMenu?.uid
   const close = () => openUserMenu(null)
 
   useEffect(() => {
+    setSubOpen(false)
+    setRoleQuery('')
     if (!userMenu) return
     setError(null)
     const down = (e: MouseEvent) => {
@@ -44,6 +65,18 @@ export default function UserContextMenu() {
       top: Math.max(8, Math.min(userMenu.y, window.innerHeight - r.height - 8)),
     })
   }, [userMenu, roles.length])
+
+  // Alt paneli "Roller" satırının yanına yerleştir (sağa sığmazsa sola)
+  useLayoutEffect(() => {
+    if (!subOpen || !rolesItem.current || !subRef.current || !ref.current) return
+    const menu = ref.current.getBoundingClientRect()
+    const item = rolesItem.current.getBoundingClientRect()
+    const sub = subRef.current.getBoundingClientRect()
+    const right = menu.right + 6
+    const left = right + sub.width > window.innerWidth - 8 ? menu.left - sub.width - 6 : right
+    const top = Math.max(8, Math.min(item.top - 8, window.innerHeight - sub.height - 8))
+    setSubPos({ left, top })
+  }, [subOpen, roles.length, roleQuery])
 
   if (!userMenu || !uid) return null
   const p = profiles[uid]
@@ -94,17 +127,48 @@ export default function UserContextMenu() {
       {isAdmin && isMember && (
         <>
           <div className="context-sep" />
-          <div className="context-label">Roller</div>
-          {roles.length === 0 && <div className="muted small context-pad">Henüz rol yok. Ayarlar → Roller'den oluştur.</div>}
-          <div className="context-roles">
-            {roles.map((r) => (
-              <button key={r.id} className={`context-role${has(r.id) ? ' on' : ''}`} onClick={() => toggleRole(r.id)}>
-                <span className="context-check" style={{ ['--role' as string]: r.color }}>{has(r.id) && <Icon name="check" size={12} />}</span>
-                <span className="role-dot" style={{ background: r.color }} />
-                <span className="context-role-name">{r.name}</span>
-              </button>
-            ))}
-          </div>
+          <button
+            ref={rolesItem}
+            className={`context-sub-trigger${subOpen ? ' open' : ''}`}
+            onMouseEnter={openSub}
+            onMouseLeave={scheduleCloseSub}
+            onClick={openSub}
+          >
+            <Icon name="shield" size={16} />
+            <span className="context-role-name">Roller</span>
+            <span className="context-sub-dots">
+              {roles.filter((r) => has(r.id)).slice(0, 4).map((r) => (
+                <i key={r.id} style={{ background: r.color }} />
+              ))}
+            </span>
+            <span className="context-sub-arrow">›</span>
+          </button>
+          {subOpen && (
+            <div
+              ref={subRef}
+              className="context-menu context-submenu"
+              style={subPos}
+              onMouseEnter={cancelCloseSub}
+              onMouseLeave={scheduleCloseSub}
+            >
+              <div className="context-label">Rolleri seç</div>
+              {roles.length === 0 && <div className="muted small context-pad">Henüz rol yok. Ayarlar → Roller'den oluştur.</div>}
+              {roles.length > 8 && (
+                <input className="context-search" placeholder="Rol ara…" value={roleQuery} onChange={(e) => setRoleQuery(e.target.value)} autoFocus />
+              )}
+              <div className="context-roles">
+                {roles
+                  .filter((r) => r.name.toLocaleLowerCase('tr').includes(roleQuery.toLocaleLowerCase('tr')))
+                  .map((r) => (
+                    <button key={r.id} className={`context-role${has(r.id) ? ' on' : ''}`} onClick={() => toggleRole(r.id)}>
+                      <span className="context-check" style={{ ['--role' as string]: r.color }}>{has(r.id) && <Icon name="check" size={12} />}</span>
+                      <span className="role-dot" style={{ background: r.color }} />
+                      <span className="context-role-name">{r.name}</span>
+                    </button>
+                  ))}
+              </div>
+            </div>
+          )}
         </>
       )}
       {error && <div className="form-error context-pad">{error}</div>}
