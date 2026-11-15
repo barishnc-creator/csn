@@ -115,7 +115,11 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
               <Icon name="hash" size={18} className="channel-icon" />
               <span className="channel-name">{c.name}</span>
               {c.allowed_roles?.length || !canJoin(c) ? <Icon name="lock" size={13} className="channel-lock" /> : null}
-              {m > 0 && <span className="badge">{m}</span>}
+              {n > 0 && c.id !== currentId && (
+                <span key={n} className={`badge${m > 0 ? '' : ' soft'}`} title={m > 0 ? `${m} bahsetme` : `${n} okunmamış mesaj`}>
+                  {n > 99 ? '99+' : n}
+                </span>
+              )}
               {can('manage_channels') && (
                 <span className="channel-gear" title="Kanal ayarları" onClick={(e) => { e.stopPropagation(); setChSettings(c.id) }}><Icon name="gear" size={14} /></span>
               )}

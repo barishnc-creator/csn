@@ -170,6 +170,8 @@ export default function Layout() {
   const { friendships } = useApp()
   const incomingRequests = friendships.filter((f) => f.status === 'pending' && f.addressee === userId).length
   const dmUnread = dmChannels.reduce((a, c) => a + (unread[c.id] ?? 0), 0) + incomingRequests
+  const serverUnread = serverChannels.reduce((a, c) => a + (unread[c.id] ?? 0), 0)
+  const serverMentions = serverChannels.reduce((a, c) => a + (mentions[c.id] ?? 0), 0)
 
   return (
     <div className={`app mobile-${mobileView}`}>
@@ -193,6 +195,9 @@ export default function Layout() {
           onClick={() => select(lastServerChannel ?? serverChannels.find((c) => c.kind === 'text')?.id ?? null, 'server')}
         >
           CSN
+          {serverUnread > 0 && mode !== 'server' && (
+            <span className={`rail-badge${serverMentions ? '' : ' soft'}`}>{serverUnread > 99 ? '99+' : serverUnread}</span>
+          )}
         </button>
       </nav>
 
