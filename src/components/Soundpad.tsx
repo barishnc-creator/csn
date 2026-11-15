@@ -4,6 +4,7 @@ import { useApp } from '../lib/store'
 import { useVoice } from '../voice/VoiceContext'
 import { addSound, deleteSound, soundpad, useSoundpad, validateSoundFile, type SoundItem } from '../voice/soundpad'
 import { comboFromEvent, comboLabel, isSingleKey, isTypingTarget, soundpadKeys, useSoundpadKeys } from '../voice/soundpadKeys'
+import { getDesktop } from '../lib/desktop'
 import AnchoredPopover from './Popover'
 import Icon from './Icon'
 
@@ -51,6 +52,23 @@ export function SoundpadHotkeys() {
     }
     window.addEventListener('keydown', down)
     return () => window.removeEventListener('keydown', down)
+  }, [inVoice, userId])
+
+  // Masaüstü (0.1.4+): CSN arka plandayken (oyun, başka uygulama) de çalışsın
+  const keys = useSoundpadKeys()
+  useEffect(() => {
+    const d = getDesktop()
+    if (!d?.setHotkeys) return
+    d.setHotkeys(inVoice ? Object.entries(keys).map(([id, combo]) => ({ id, combo })) : []).catch(() => {})
+  }, [inVoice, keys])
+  useEffect(() => {
+    const d = getDesktop()
+    if (!d?.onHotkey || !inVoice) return
+    const off = d.onHotkey((id) => soundpad.send(id, userId))
+    return () => {
+      off()
+      d.setHotkeys?.([]).catch(() => {})
+    }
   }, [inVoice, userId])
   return null
 }
@@ -158,6 +176,13 @@ function SoundpadGrid() {
       {binding && (
         <div className="small sound-bind-hint">
           Kısayol için bir tuşa bas (ör. 1, Q, F2; istersen Ctrl/Alt ile). Esc: vazgeç · Backspace: kaldır
+        </div>
+      )}
+      {!binding && Object.keys(keys).length > 0 && (
+        <div className="small muted">
+          {getDesktop()?.setHotkeys
+            ? 'Kısayollar CSN arka plandayken de (oyunda, başka uygulamada) çalışır.'
+            : 'Kısayollar yalnız CSN açıkken çalışır; oyunda ve diğer uygulamalarda da çalışması için masaüstü uygulamasını kullan.'}
         </div>
       )}
       <label className="music-volume" title="Yalnız sende değişir">

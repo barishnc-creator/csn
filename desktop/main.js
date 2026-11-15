@@ -81,6 +81,79 @@ if (!app.requestSingleInstanceLock()) {
     } catch {}
   })
 
+  // ───── Soundpad kısayolları: CSN arka plandayken de (oyun, başka uygulama) çalışır ─────
+  // uiohook tuşları yalnız dinler, engellemez: atanmış tuş diğer uygulamalarda da yazılmaya devam eder.
+  let hook = null
+  try {
+    hook = require('uiohook-napi')
+  } catch (err) {
+    console.error('Genel kısayol modülü yüklenemedi:', err)
+  }
+  const codeByKeycode = new Map() // uiohook tuş kodu → KeyboardEvent.code
+  if (hook) {
+    for (const [name, keycode] of Object.entries(hook.UiohookKey)) {
+      if (/^(Ctrl|Alt|Shift|Meta)(Right)?$/.test(name)) continue
+      const code = /^[A-Z]$/.test(name) ? `Key${name}` : /^[0-9]$/.test(name) ? `Digit${name}` : name
+      codeByKeycode.set(keycode, code)
+    }
+  }
+  let hotkeys = new Map() // "Ctrl+Digit1" → ses id
+  let hookRunning = false
+  const pressed = new Set()
+  const COMBO = /^((Ctrl|Alt|Shift|Meta)\+){0,4}[A-Za-z0-9]{1,24}$/
+
+  function onGlobalKeyDown(e) {
+    if (pressed.has(e.keycode)) return // basılı tutma tekrarı
+    pressed.add(e.keycode)
+    // Pencere öndeyse sayfa kendi dinleyicisiyle çalar (iki kez çalmasın)
+    if (!win || win.isDestroyed() || win.isFocused()) return
+    const code = codeByKeycode.get(e.keycode)
+    if (!code) return
+    const mods = [e.ctrlKey && 'Ctrl', e.altKey && 'Alt', e.shiftKey && 'Shift', e.metaKey && 'Meta'].filter(Boolean)
+    const id = hotkeys.get([...mods, code].join('+'))
+    if (id) win.webContents.send('csn:hotkey', id)
+  }
+  function onGlobalKeyUp(e) {
+    pressed.delete(e.keycode)
+  }
+  function syncHook() {
+    if (!hook) return
+    try {
+      if (hotkeys.size > 0 && !hookRunning) {
+        hook.uIOhook.on('keydown', onGlobalKeyDown)
+        hook.uIOhook.on('keyup', onGlobalKeyUp)
+        hook.uIOhook.start()
+        hookRunning = true
+      } else if (hotkeys.size === 0 && hookRunning) {
+        hook.uIOhook.stop()
+        hook.uIOhook.removeListener('keydown', onGlobalKeyDown)
+        hook.uIOhook.removeListener('keyup', onGlobalKeyUp)
+        hookRunning = false
+        pressed.clear()
+      }
+    } catch (err) {
+      console.error('Genel kısayollar başlatılamadı:', err)
+    }
+  }
+  ipcMain.handle('csn:set-hotkeys', async (event, list) => {
+    if (!senderAllowed(event)) return false
+    const next = new Map()
+    if (Array.isArray(list)) {
+      for (const item of list.slice(0, 200)) {
+        const id = item && String(item.id)
+        const combo = item && String(item.combo)
+        if (id && id.length <= 64 && COMBO.test(combo)) next.set(combo, id)
+      }
+    }
+    hotkeys = next
+    syncHook()
+    return !!hook
+  })
+  app.on('will-quit', () => {
+    hotkeys = new Map()
+    syncHook()
+  })
+
   ipcMain.handle('csn:select-source', async (event, id, withAudio) => {
     if (!senderAllowed(event)) throw new Error('İzin yok')
     if (typeof id !== 'string') throw new Error('Geçersiz kaynak')

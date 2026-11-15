@@ -17,6 +17,9 @@ export interface DesktopBridge {
   titleBarHeight?: number
   setTitleBarColors?(color: string, symbolColor: string): Promise<void>
   onFullscreen?(cb: (on: boolean) => void): () => void
+  /** 0.1.4+: soundpad kısayolları CSN arka plandayken de çalışır */
+  setHotkeys?(list: { id: string; combo: string }[]): Promise<boolean>
+  onHotkey?(cb: (id: string) => void): () => void
 }
 
 declare global {
