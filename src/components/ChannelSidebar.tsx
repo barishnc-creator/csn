@@ -25,7 +25,18 @@ interface Props {
 }
 
 export default function ChannelSidebar({ currentId, onSelect, unread, mentions, onOpenSettings, onFriends }: Props) {
-  const { channels, categories, presence, profiles, can, openProfile, openUserMenu, canJoin } = useApp()
+  const { channels, categories, presence, profiles, can, openProfile, openUserMenu, canJoin, userId } = useApp()
+  // Revize #29: taşıma yetkisi olan, ses kanalındaki birini sürükleyip başka odaya bırakır
+  const canMove = can('move_members')
+  const [dragUid, setDragUid] = useState<string | null>(null)
+  const [dropTarget, setDropTarget] = useState<string | null>(null)
+  async function dropMove(uid: string, channelId: string) {
+    setDragUid(null)
+    setDropTarget(null)
+    if (presence[uid]?.voice_channel_id === channelId) return
+    const { error } = await supabase.from('voice_moves').insert({ target: uid, channel_id: channelId, moved_by: userId })
+    if (error) console.warn('Taşıma başarısız:', error.message)
+  }
   const [chSettings, setChSettings] = useState<string | null>(null)
   const [creating, setCreating] = useState<{ kind: 'text' | 'voice'; categoryId: string | null } | null>(null)
   const [catModal, setCatModal] = useState<{ kind: 'text' | 'voice'; category?: ChannelCategory } | null>(null)
@@ -86,7 +97,22 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
   const renderVoice = (c: Channel) => {
           const inside = Object.values(presence).filter((p) => p.voice_channel_id === c.id)
           return (
-            <div key={c.id}>
+            <div
+              key={c.id}
+              className={`voice-room${dragUid && dropTarget === c.id ? ' drop-over' : ''}${dragUid ? ' drop-ready' : ''}`}
+              onDragOver={(e) => {
+                if (!dragUid) return
+                e.preventDefault()
+                e.dataTransfer.dropEffect = 'move'
+                if (dropTarget !== c.id) setDropTarget(c.id)
+              }}
+              onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropTarget((t) => (t === c.id ? null : t)) }}
+              onDrop={(e) => {
+                e.preventDefault()
+                const uid = e.dataTransfer.getData('text/csn-user') || dragUid
+                if (uid) dropMove(uid, c.id)
+              }}
+            >
               <button
                 className={`channel${c.id === currentId ? ' active' : ''}${voice.channelId === c.id ? ' connected' : ''}`}
                 onClick={() => onSelect(c.id)}
@@ -111,7 +137,15 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
               {inside.map((p) => (
                 <div
                   key={p.user_id}
-                  className="voice-user"
+                  className={`voice-user${canMove && p.user_id !== userId ? ' draggable' : ''}${dragUid === p.user_id ? ' dragging' : ''}`}
+                  draggable={canMove && p.user_id !== userId}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('text/csn-user', p.user_id)
+                    e.dataTransfer.effectAllowed = 'move'
+                    setDragUid(p.user_id)
+                  }}
+                  onDragEnd={() => { setDragUid(null); setDropTarget(null) }}
+                  title={canMove && p.user_id !== userId ? 'Başka bir odaya taşımak için sürükle' : undefined}
                   onClick={() => openProfile(p.user_id)}
                   onContextMenu={(e) => { e.preventDefault(); openUserMenu(p.user_id, e.clientX, e.clientY) }}
                 >
