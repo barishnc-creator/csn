@@ -46,7 +46,7 @@ CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'
 - Bazı migrationlarda (politika silme) Supabase MCP kullanıcıdan onay ister; yanıt gelmezse zaman aşımı olur, kullanıcıya söyle.
 
 ## Sıradaki adaylar
-0. Android uygulaması (Capacitor APK) kullanıcıya önerildi, cevap bekleniyor
+0. Android uygulaması (Capacitor APK): kullanıcı "şimdilik kalsın" dedi, sormadan başlama
 1. Masaüstü: oyun içindeyken de çalışan bas-konuş (globalShortcut), sistem tepsisi, uygulama simgesi (`desktop/build/icon.ico`), otomatik güncelleme
    - Bilinen sınır: masaüstünde sistem sesi paylaşılınca CSN'nin kendi sesi de gider (yankı)
 2. Kod bölme: ana JS paketi ~1,1 MB (LiveKit ve RNNoise yalnız sese girince yüklensin)
