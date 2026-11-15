@@ -1,3 +1,4 @@
+import { confirmDialog, alertDialog } from '../lib/dialog'
 import { memo, useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { useApp } from '../lib/store'
@@ -8,6 +9,7 @@ import type { Attachment, Message, Reaction } from '../lib/types'
 import Avatar from './Avatar'
 import Icon from './Icon'
 import { isGifMessage } from './GifPicker'
+import { stickerIdOf, useStickers } from '../lib/stickers'
 
 export const QUICK_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🔥', '🎉', '👀', '💯', '🙏', '😎', '✅']
 
@@ -34,13 +36,13 @@ function MessageItem({ message: m, grouped, replied, reactions, editing, canDele
   const highlighted = !mine && mentionsMe(m.content, me?.display_name)
 
   async function remove() {
-    if (!confirm('Bu mesaj silinsin mi?')) return
+    if (!(await confirmDialog({ title: 'Mesaj silinsin mi?', message: m.content ? (m.content.length > 140 ? m.content.slice(0, 140) + '…' : m.content) : 'Bu mesaj kalıcı olarak silinir.', confirmText: 'Mesajı sil', danger: true }))) return
     await supabase.from('messages').delete().eq('id', m.id)
   }
 
   async function togglePin() {
     const { error } = await supabase.rpc('toggle_pin', { mid: m.id })
-    if (error) alert(error.message)
+    if (error) alertDialog('İşlem yapılamadı', error.message)
   }
 
   async function react(emoji: string) {
@@ -67,7 +69,7 @@ function MessageItem({ message: m, grouped, replied, reactions, editing, canDele
             <>
               <Avatar profile={profiles[replied.author_id]} userId={replied.author_id} size={16} />
               <strong style={{ color: nameColor(replied.author_id) }}>{profiles[replied.author_id]?.display_name ?? 'Üye'}</strong>
-              <span className="reply-snippet">{isGifMessage(replied.content) ? 'GIF' : replied.content || 'Ek dosya'}</span>
+              <span className="reply-snippet">{isGifMessage(replied.content) ? 'GIF' : stickerIdOf(replied.content) ? 'Sticker' : replied.content || 'Ek dosya'}</span>
             </>
           ) : (
             <span className="reply-snippet muted">Eski bir mesaja yanıt</span>
@@ -97,7 +99,9 @@ function MessageItem({ message: m, grouped, replied, reactions, editing, canDele
           {editing ? (
             <EditBox message={m} onDone={onEditDone} />
           ) : (
-            m.content && isGifMessage(m.content) ? (
+            m.content && stickerIdOf(m.content) ? (
+              <StickerView id={stickerIdOf(m.content)!} />
+            ) : m.content && isGifMessage(m.content) ? (
               <img className="gif-message" src={m.content.trim()} alt="GIF" loading="lazy" />
             ) : m.content && (
               <div className="message-content">
@@ -255,4 +259,12 @@ function AttachmentView({ a }: { a: Attachment }) {
       )}
     </div>
   )
+}
+
+function StickerView({ id }: { id: string }) {
+  const { byId, urlOf, loaded } = useStickers()
+  const s = byId(id)
+  const url = urlOf(id)
+  if (!s) return loaded ? <span className="sticker-missing"><Icon name="sticker" size={14} /> Silinmiş sticker</span> : <span className="sticker-message" />
+  return url ? <img className="sticker-message" src={url} alt={s.name} title={s.name} /> : <span className="sticker-message" />
 }

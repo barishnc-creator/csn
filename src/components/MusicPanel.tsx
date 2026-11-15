@@ -11,6 +11,9 @@ import {
   removeFromQueue,
   resume,
   seek,
+  setLoop,
+  LOOP_LABEL,
+  LOOP_ORDER,
   skip,
   stop,
   thumbOf,
@@ -118,6 +121,14 @@ export default function MusicPanel() {
         )}
         <button className="icon-btn" disabled={busy} onClick={() => run(() => skip(ch))} title="Geç">⏭</button>
         <button className="icon-btn" disabled={busy} onClick={() => run(() => stop(ch))} title="Durdur ve sırayı temizle">⏹</button>
+        <button
+          className={`icon-btn${row && row.loop !== 'off' ? ' active' : ''}`}
+          disabled={busy}
+          onClick={() => run(() => setLoop(ch, LOOP_ORDER[(LOOP_ORDER.indexOf(row?.loop ?? 'off') + 1) % LOOP_ORDER.length]))}
+          title={LOOP_LABEL[row?.loop ?? 'off']}
+        >
+          <Icon name={row?.loop === 'one' ? 'repeatOne' : 'repeat'} size={16} />
+        </button>
         <button
           className={`icon-btn${showQueue ? ' active' : ''}`}
           onClick={() => setShowQueue((s) => !s)}

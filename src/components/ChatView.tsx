@@ -10,6 +10,8 @@ import MessageItem from './MessageItem'
 import Composer from './Composer'
 import { CallStage } from './VoiceView'
 import { isGifMessage } from './GifPicker'
+import { stickerIdOf } from '../lib/stickers'
+import MusicConsole from './MusicConsole'
 
 const PAGE = 50
 const GROUP_MS = 5 * 60 * 1000
@@ -218,6 +220,8 @@ export default function ChatView({ channel, onToggleMembers }: { channel: Channe
           </div>
         )}
 
+        {channel.kind !== 'dm' && <MusicConsole textChannelId={channel.id} />}
+
         <div className="messages" ref={scroller} onScroll={onScroll}>
           {!hasMore && (
             <div className="channel-intro">
@@ -313,7 +317,7 @@ function MiniMessage({ m, onJump }: { m: Message; onJump: (id: number) => void }
         <div>
           <strong>{profiles[m.author_id]?.display_name ?? 'Üye'}</strong> <span className="muted small">{formatStamp(m.created_at)}</span>
         </div>
-        <div className="mini-msg-text">{isGifMessage(m.content) ? '🎞️ GIF' : m.content || (m.attachments.length ? '📎 Ek dosya' : '')}</div>
+        <div className="mini-msg-text">{isGifMessage(m.content) ? '🎞️ GIF' : stickerIdOf(m.content) ? '🏷️ Sticker' : m.content || (m.attachments.length ? '📎 Ek dosya' : '')}</div>
       </div>
     </button>
   )

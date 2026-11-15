@@ -1,3 +1,4 @@
+import { confirmDialog } from '../lib/dialog'
 import { useEffect, useRef, useState } from 'react'
 import { Room } from 'livekit-client'
 import { supabase } from '../lib/supabase'
@@ -549,7 +550,7 @@ function ChannelsTab() {
   }
 
   async function remove(c: Channel) {
-    if (!confirm(`"${c.name}" kanalı ve tüm mesajları silinsin mi? Bu geri alınamaz.`)) return
+    if (!(await confirmDialog({ title: `#${c.name} silinsin mi?`, message: 'Kanal ve içindeki tüm mesajlar kalıcı olarak silinir. Bu geri alınamaz.', confirmText: 'Kanalı sil', danger: true }))) return
     const { error } = await supabase.from('channels').delete().eq('id', c.id)
     if (error) setError(error.message)
   }
@@ -705,7 +706,7 @@ function RoleEditor({ role, onDeleted, onError }: { role: CustomRole; onDeleted:
     if (error) onError(error.message)
   }
   async function remove() {
-    if (!confirm(`"${role.name}" rolü silinsin mi? Bu role sahip üyelerden de kaldırılır.`)) return
+    if (!(await confirmDialog({ title: `"${role.name}" rolü silinsin mi?`, message: 'Bu role sahip üyelerden de kaldırılır.', confirmText: 'Rolü sil', danger: true }))) return
     const { error } = await supabase.from('roles').delete().eq('id', role.id)
     if (error) onError(error.message)
     else onDeleted()
@@ -782,7 +783,7 @@ function MembersTab() {
     if (error) setError(error.message)
   }
   async function kick(id: string) {
-    if (!confirm(`${profiles[id]?.display_name ?? 'Bu üye'} sunucudan atılsın mı?`)) return
+    if (!(await confirmDialog({ title: `${profiles[id]?.display_name ?? 'Bu üye'} sunucudan atılsın mı?`, message: 'Tekrar katılmak için yeni bir davet kodu gerekir.', confirmText: 'Sunucudan at', danger: true }))) return
     const { error } = await supabase.from('members').delete().eq('user_id', id)
     if (error) setError(error.message)
   }

@@ -1,7 +1,7 @@
 # CSN — Devir notu
 
 > Yeni bir oturum buradan devam eder. Önce bunu, sonra `CLAUDE.md`'yi oku.
-> Son güncelleme: 2026-11-15 (bağlam dolduğu için yeni oturuma geçilecek; buradan devam edin)
+> Son güncelleme: 2026-11-15 (revize #15, #16, #18, #19 yayında)
 
 ## Durum özeti
 CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'e her push'ta `.github/workflows/pages.yml` ile yayınlanır).
@@ -38,10 +38,14 @@ CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'
 | Sunucu temaları (Midnight / Tokyo Night / Catppuccin / Nord / Rosé Pine) + vurgu rengi, yüzen panel düzeni; yöneticiler Ayarlar → Görünüm'den seçer (`0014`, `src/lib/theme.ts`) | ✅ |
 | Davet bağlantısı (`?davet=KOD`), kanallarda okunmamış sayaç baloncuğu | ✅ |
 | GIF seçici (mesaj kutusunun sağı): `src/lib/gifs.json`, 295 GIPHY GIF, 16 kategori; arama + son kullanılanlar | ✅ GIF'ler canlıda görülmedi (GIPHY bu ortamdan erişilemiyor) |
+| Revize #15 sunucu stickerları (`0015`, `src/lib/stickers.ts`, `StickerPicker.tsx`): GIF'in yanında, yöneticiler ekler/siler, mesajda `[sticker:<id>]` | ✅ sahte veriyle ekran görüntüsü, canlı denenmedi |
+| Revize #16 uygulamaya uygun onay/uyarı kutuları (`src/lib/dialog.tsx`: `confirmDialog`, `alertDialog`); tüm `confirm()/alert()` kaldırıldı | ✅ |
+| Revize #18 müzik botu (`0016`): "CSN Müzik" bot üyesi (plak avatar, rol verilebilir, hep çevrimiçi), ses odasında en altta, sağ tık → müzik ses çubuğu, komutun yazıldığı kanalda konsol (`MusicConsole.tsx`: duraklat/devam/geç/tekrar/sıra/durdur/ses), bu kanala atılan YouTube bağlantısı sıraya girer, `/tekrar`, `/ses`; sahip notu: alttaki revize bildirimi kaldırıldı, üye panelindeki kaldı | ✅ canlı denenmedi |
+| Revize #19 kategori başlığında "+" ile hızlı kanal oluşturma (`CreateChannelModal.tsx`, `manage_channels` yetkisi) | ✅ |
 | Electron masaüstü uygulaması (`desktop/`), kurulum: Actions → "Masaüstü (Windows)" ya da `desktop-v*` etiketi | ✅ 0.1.1 yayında: https://github.com/barishnc-creator/csn/releases/latest (Actions → "Masaüstü (Windows)" elle başlatılınca `desktop/package.json` sürümüyle yeni Release açar; bu ortamdan etiket push'u engelli) |
 
 ## Migrationlar (sırayla uygulandı)
-`0001_init` → `0002_lock_anon_functions` → `0003_owner_and_revisions` → `0004_dm_kind` → `0005_roles_dm_reactions_pins_profile` → `0006_server_reload` → `0007_friendships` → `0008_tag_banner` → `0009_channel_join_roles` → `0010_channels_select_row_based` → `0011_submit_revisions_perm` → `0012_music` → `0013_soundpad` → `0014_server_theme`
+`0001_init` → `0002_lock_anon_functions` → `0003_owner_and_revisions` → `0004_dm_kind` → `0005_roles_dm_reactions_pins_profile` → `0006_server_reload` → `0007_friendships` → `0008_tag_banner` → `0009_channel_join_roles` → `0010_channels_select_row_based` → `0011_submit_revisions_perm` → `0012_music` → `0013_soundpad` → `0014_server_theme` → `0015_stickers` → `0016_music_bot`
 
 ## Bekleyen karar
 - Masaüstü .exe imzasız: Windows 11 "Akıllı Uygulama Denetimi" açık olan bilgisayarlarda engelleniyor (egunesx'te oldu). Geçici çözüm: PWA olarak yükleme (⚙️ → Uygulama olarak yükle). Kalıcı çözüm seçenekleri (Microsoft Store, ücretsiz bireysel hesap / kod imzalama sertifikası) kullanıcıya sunuldu; **"şimdilik kalsın" dedi**, sormadan başlama.
@@ -51,6 +55,8 @@ CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'
 - Bazı migrationlarda (politika silme) Supabase MCP kullanıcıdan onay ister; yanıt gelmezse zaman aşımı olur, kullanıcıya söyle.
 
 ## Sıradaki adaylar
+- Müzik botu canlıda denenmeli (iki kişiyle: sıra, tekrar, konsol). Bot hesabı `b0700000-0000-4000-8000-00000000b070` (`src/lib/bots.ts`)
+- Başka yöneticinin yüklediği sticker silinince dosya depoda kalıyor (soundpad ile aynı sınır)
 - Soundpad yayını Supabase broadcast (herkese açık kanal); istenirse LiveKit data mesajlarına taşınabilir
 - Başka yöneticinin yüklediği ses silinince dosya depoda kalıyor
 - Okunmamış sayılarını sunucuda saklama (şu an yenileyince sıfırlanıyor) — kullanıcıya önerildi

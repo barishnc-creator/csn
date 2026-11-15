@@ -20,7 +20,14 @@ export interface MusicRow {
   paused_at: number
   updated_by: string | null
   updated_at: string
+  loop: LoopMode
+  rev: number
+  control_channel_id: string | null
 }
+
+export type LoopMode = 'off' | 'one' | 'all'
+/** Müzik botu hesabı (bkz. 0016_music_bot.sql) */
+export { MUSIC_BOT_ID } from '../lib/bots'
 
 const VOLUME_KEY = 'csn.music.volume'
 const DRIFT_LIMIT = 2 // sn
@@ -106,7 +113,7 @@ export function positionOf(row: MusicRow | null): number {
 
 // ───────────── Veritabanı işlemleri ─────────────
 
-type Change = Partial<Pick<MusicRow, 'queue' | 'current' | 'paused' | 'paused_at'>>
+type Change = Partial<Pick<MusicRow, 'queue' | 'current' | 'paused' | 'paused_at' | 'loop' | 'rev' | 'control_channel_id'>>
 
 async function fetchRow(channelId: string): Promise<MusicRow | null> {
   const { data, error } = await supabase.from('music_state').select('*').eq('channel_id', channelId).maybeSingle()
@@ -148,28 +155,42 @@ async function mutate(channelId: string, fn: (row: MusicRow | null) => Change | 
 // Kendi yazdığımızı Realtime'ı beklemeden göster
 function publish(row: MusicRow | null) {
   if (row && engine.channelId === row.channel_id) engine.setRow(row)
+  if (row) activity.put(row)
   return row
 }
 
-const next = (row: MusicRow | null): Change => {
+/** Sıradakine geç. auto: parça kendiliğinden bitti (tek parça tekrarında aynı parça baştan çalar) */
+const next = (row: MusicRow | null, auto = false): Change => {
   const queue = row?.queue ?? []
-  return { current: queue[0] ?? null, queue: queue.slice(1), paused: false, paused_at: 0 }
+  const loop = row?.loop ?? 'off'
+  if (auto && loop === 'one' && row?.current) return { rev: (row.rev ?? 0) + 1, paused: false, paused_at: 0 }
+  const rest = loop === 'all' && row?.current ? [...queue, row.current] : queue
+  if (loop === 'all' && row?.current && rest.length === 1) return { rev: (row.rev ?? 0) + 1, paused: false, paused_at: 0 }
+  return { current: rest[0] ?? null, queue: rest.slice(1), paused: false, paused_at: 0, rev: (row?.rev ?? 0) + 1 }
 }
 
 /** Çalmıyorsa hemen başlatır, çalıyorsa sıraya ekler. Döner: 'playing' | 'queued' */
-export async function enqueue(channelId: string, item: MusicItem): Promise<'playing' | 'queued'> {
+export async function enqueue(channelId: string, item: MusicItem, controlChannelId?: string | null): Promise<'playing' | 'queued'> {
   let result: 'playing' | 'queued' = 'queued'
+  const ctl = controlChannelId ? { control_channel_id: controlChannelId } : {}
   await mutate(channelId, (row) => {
     if (!row?.current) {
       result = 'playing'
-      return { current: item, queue: row?.queue ?? [], paused: false, paused_at: 0 }
+      return { current: item, queue: row?.queue ?? [], paused: false, paused_at: 0, rev: (row?.rev ?? 0) + 1, ...ctl }
     }
     if (row.queue.length >= MAX_QUEUE) throw new Error('Sıra dolu (en fazla 100 parça)')
     result = 'queued'
-    return { queue: [...row.queue, item] }
+    return { queue: [...row.queue, item], ...ctl }
   })
   return result
 }
+
+export async function setLoop(channelId: string, loop: LoopMode) {
+  await mutate(channelId, (r) => (r && r.loop !== loop ? { loop } : null))
+}
+
+export const LOOP_ORDER: LoopMode[] = ['off', 'all', 'one']
+export const LOOP_LABEL: Record<LoopMode, string> = { off: 'Tekrar kapalı', all: 'Sırayı tekrarla', one: 'Parçayı tekrarla' }
 
 export async function skip(channelId: string): Promise<MusicItem | null> {
   const row = await mutate(channelId, (r) => (r?.current ? next(r) : null))
@@ -203,7 +224,7 @@ export async function removeFromQueue(channelId: string, index: number) {
 async function advanceFrom(row: MusicRow) {
   const { data } = await supabase
     .from('music_state')
-    .update(next(row))
+    .update(next(row, true))
     .eq('channel_id', row.channel_id)
     .eq('updated_at', row.updated_at)
     .select()
@@ -394,6 +415,7 @@ class MusicEngine {
   setRow(row: MusicRow | null) {
     if (row && this.row && row.channel_id === this.row.channel_id && tsMs(row.updated_at) < tsMs(this.row.updated_at)) return
     const changedTrack = row?.current?.videoId !== this.row?.current?.videoId
+    if (row && this.channelId === row.channel_id) activity.put(row)
     this.row = row ? { ...row, queue: Array.isArray(row.queue) ? row.queue : [] } : null
     if (changedTrack) {
       this.duration = 0
@@ -517,6 +539,12 @@ class MusicEngine {
     if (!row?.current || row.paused) return
     const key = `${row.current.videoId}@${row.updated_at}`
     if (this.advancing === key) return
+    if (row.loop === 'one' && this.error) {
+      // Oynatılamayan parça sonsuz döngüye girmesin
+      this.advancing = key
+      supabase.from('music_state').update({ ...next({ ...row, loop: 'off' }), loop: 'off' }).eq('channel_id', row.channel_id).eq('updated_at', row.updated_at).then(() => {})
+      return
+    }
     this.advancing = key
     advanceFrom(row).catch(() => {})
   }
@@ -543,8 +571,9 @@ class MusicEngine {
     const pos = positionOf(row)
     const p = this.player
     try {
-      if (this.loadedId !== row.current.videoId) {
-        this.loadedId = row.current.videoId
+      const key = `${row.current.videoId}#${row.rev ?? 0}`
+      if (this.loadedId !== key) {
+        this.loadedId = key
         if (row.paused) p.cueVideoById({ videoId: row.current.videoId, startSeconds: pos })
         else {
           this.playIssuedAt = Date.now()
@@ -611,4 +640,60 @@ export const music = engine
 
 export function useMusic(): MusicSnapshot {
   return useSyncExternalStore(engine.subscribe, engine.getSnapshot, engine.getSnapshot)
+}
+
+// ───────────── Tüm kanalların müzik durumu (bot görünümü, konsol) ─────────────
+
+class MusicActivity {
+  private rows: Record<string, MusicRow> = {}
+  private started = false
+  private listeners = new Set<() => void>()
+  private snap: Record<string, MusicRow> = {}
+  put(row: MusicRow) {
+    const old = this.rows[row.channel_id]
+    if (old && tsMs(old.updated_at) > tsMs(row.updated_at)) return
+    this.rows = { ...this.rows, [row.channel_id]: { ...row, queue: Array.isArray(row.queue) ? row.queue : [] } }
+    this.emit()
+  }
+  private emit() {
+    this.snap = this.rows
+    this.listeners.forEach((l) => l())
+  }
+  private start() {
+    if (this.started) return
+    this.started = true
+    supabase
+      .from('music_state')
+      .select('*')
+      .then(({ data }) => {
+        for (const r of (data ?? []) as MusicRow[]) this.put(r)
+      })
+    supabase
+      .channel('music-activity')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'music_state' }, (p) => {
+        if (p.eventType === 'DELETE') {
+          const id = (p.old as MusicRow).channel_id
+          const { [id]: _gone, ...rest } = this.rows
+          void _gone
+          this.rows = rest
+          this.emit()
+        } else this.put(p.new as MusicRow)
+      })
+      .subscribe()
+  }
+  subscribe = (l: () => void) => {
+    this.start()
+    this.listeners.add(l)
+    return () => {
+      this.listeners.delete(l)
+    }
+  }
+  getSnapshot = () => this.snap
+}
+
+const activity = new MusicActivity()
+
+/** Kanal id → müzik durumu (yalnız görülebilen kanallar) */
+export function useMusicRows(): Record<string, MusicRow> {
+  return useSyncExternalStore(activity.subscribe, activity.getSnapshot, activity.getSnapshot)
 }

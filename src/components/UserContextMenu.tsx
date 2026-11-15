@@ -4,6 +4,8 @@ import { useApp } from '../lib/store'
 import { formatTag } from '../lib/format'
 import { acceptFriend, sendFriendRequest } from '../lib/friends'
 import { useVoice } from '../voice/VoiceContext'
+import { music, useMusic } from '../voice/music'
+import { MUSIC_BOT_ID, isBot } from '../lib/bots'
 import Icon from './Icon'
 import { STATUS_OPTIONS, statusLabel } from '../lib/status'
 
@@ -11,6 +13,7 @@ import { STATUS_OPTIONS, statusLabel } from '../lib/status'
 export default function UserContextMenu() {
   const { userMenu, openUserMenu, profiles, userId, myRole, roles, memberRoles, members, openProfile, openDm, friendState, presence, myChosenStatus, setMyStatus } = useApp()
   const voice = useVoice()
+  const musicSnap = useMusic()
   const ref = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ left: number; top: number }>({ left: 0, top: 0 })
   const [error, setError] = useState<string | null>(null)
@@ -86,6 +89,7 @@ export default function UserContextMenu() {
   const isMe = uid === userId
   const isAdmin = myRole === 'admin'
   const isMember = members.some((m) => m.user_id === uid)
+  const bot = isBot(uid)
   const fs = friendState(uid)
   const inMyCall = !isMe && !!voice.channelId && presence[uid]?.voice_channel_id === voice.channelId
   const volume = voice.settings.volumes[uid] ?? 1
@@ -137,10 +141,10 @@ export default function UserContextMenu() {
         </>
       )}
       <button onClick={() => { close(); openProfile(uid) }}><Icon name="users" size={16} /> Profil</button>
-      {!isMe && isMember && (
+      {!isMe && isMember && !bot && (
         <button onClick={() => { close(); openDm(uid) }}><Icon name="message" size={16} /> Mesaj gönder</button>
       )}
-      {!isMe && isMember && fs.state === 'none' && (
+      {!isMe && isMember && !bot && fs.state === 'none' && (
         <button onClick={() => sendFriendRequest(uid).then(close).catch((e) => setError(e.message))}><Icon name="userPlus" size={16} /> Arkadaş ekle</button>
       )}
       {!isMe && fs.state === 'incoming' && fs.id && (
@@ -150,7 +154,16 @@ export default function UserContextMenu() {
         <Icon name="hash" size={16} /> Adı ve etiketi kopyala
       </button>
 
-      {inMyCall && (
+      {uid === MUSIC_BOT_ID && (
+        <>
+          <div className="context-sep" />
+          <div className="context-label">Müzik ses seviyesi · %{musicSnap.volume}</div>
+          <input className="context-range" type="range" min={0} max={100} step={1} value={musicSnap.volume} onChange={(e) => music.setVolume(Number(e.target.value))} />
+          <div className="muted small context-pad">Yalnız senin duyduğun sesi değiştirir.</div>
+        </>
+      )}
+
+      {inMyCall && !bot && (
         <>
           <div className="context-sep" />
           <div className="context-label">Kullanıcı ses seviyesi · %{Math.round(volume * 100)}</div>

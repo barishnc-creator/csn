@@ -1,3 +1,4 @@
+import { confirmDialog } from '../lib/dialog'
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useApp } from '../lib/store'
@@ -49,7 +50,7 @@ export default function ChannelSettingsModal({ channelId, onClose }: { channelId
   }
 
   async function remove(c: Channel) {
-    if (!confirm(`"${c.name}" kanalı ve tüm mesajları silinsin mi? Bu geri alınamaz.`)) return
+    if (!(await confirmDialog({ title: `#${c.name} silinsin mi?`, message: 'Kanal ve içindeki tüm mesajlar kalıcı olarak silinir. Bu geri alınamaz.', confirmText: 'Kanalı sil', danger: true }))) return
     const { error } = await supabase.from('channels').delete().eq('id', c.id)
     if (error) setError(error.message)
     else onClose()

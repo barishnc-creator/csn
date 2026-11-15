@@ -1,3 +1,4 @@
+import { confirmDialog } from '../lib/dialog'
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useApp } from '../lib/store'
@@ -147,7 +148,7 @@ function RevisionCard({ r, isOwner, isMine, authorName, deciderName, onChanged, 
   }
 
   async function remove() {
-    if (!confirm(`"${r.title}" revizesi silinsin mi?`)) return
+    if (!(await confirmDialog({ title: `"${r.title}" revizesi silinsin mi?`, confirmText: 'Revizeyi sil', danger: true }))) return
     const { error } = await supabase.from('revisions').delete().eq('id', r.id)
     if (error) onError(error.message)
     else onChanged()

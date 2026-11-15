@@ -1,3 +1,5 @@
+import { isBot, MUSIC_BOT_ID } from '../lib/bots'
+import { alertDialog } from '../lib/dialog'
 import { useEffect, useState } from 'react'
 import { signedUrl } from '../lib/files'
 import { useApp } from '../lib/store'
@@ -64,13 +66,15 @@ export default function UserProfileModal({ userId, onClose, onEditProfile }: { u
                 </div>
               )}
               <div className="profile-buttons">
-                {userId === me ? (
+                {isBot(userId) ? (
+                  <div className="muted small">🤖 Bu bir bot hesabı; mesaj gönderilemez.{userId === MUSIC_BOT_ID ? ' Ses kanalındayken sohbete /çal <YouTube bağlantısı> yaz.' : ''}</div>
+                ) : userId === me ? (
                   <button className="btn primary block" onClick={onEditProfile}><Icon name="edit" size={16} /> Profili düzenle</button>
                 ) : (
                   <div className="profile-button-row">
                   <FriendButton
                     state={friendState(userId).state}
-                    onSend={() => sendFriendRequest(userId).catch((e) => alert(e.message))}
+                    onSend={() => sendFriendRequest(userId).catch((e) => alertDialog('İstek gönderilemedi', e.message))}
                     onAccept={() => { const id = friendState(userId).id; if (id) acceptFriend(id) }}
                   />
                   <button

@@ -6,6 +6,7 @@ import { VoiceProvider } from './voice/VoiceContext'
 import AuthScreen from './auth/AuthScreen'
 import JoinScreen from './auth/JoinScreen'
 import Layout from './components/Layout'
+import { DialogHost } from './lib/dialog'
 
 type Gate = 'loading' | 'member' | 'not-member'
 
@@ -52,6 +53,7 @@ export default function App() {
     <AppProvider userId={session.user.id}>
       <VoiceProvider>
         <Layout />
+        <DialogHost />
       </VoiceProvider>
     </AppProvider>
   )

@@ -1058,3 +1058,97 @@ a { color: var(--accent-2); }
   .sidebar, .main, .member-list { border-radius: 0; border: 0; box-shadow: none; }
   .user-panel { margin: 0; border-radius: 0; border-left: 0; border-right: 0; border-bottom: 0; }
 }
+
+/* ═══════════════ Onay / uyarı kutusu (Revize #16) ═══════════════ */
+.confirm-backdrop { z-index: 200; }
+.confirm-dialog { width: min(420px, 100%); align-items: stretch; text-align: center; padding: 26px 24px 20px; gap: 12px; }
+.confirm-icon { width: 52px; height: 52px; margin: 0 auto 2px; border-radius: 16px; display: grid; place-items: center; color: var(--accent, #7c5cff); background: color-mix(in srgb, var(--accent, #7c5cff) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent, #7c5cff) 35%, transparent); }
+.confirm-dialog.danger .confirm-icon { color: var(--red); background: color-mix(in srgb, var(--red) 15%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--red) 35%, transparent); }
+.confirm-body h3 { margin: 0; font-size: 17px; color: var(--text); text-transform: none; letter-spacing: -0.01em; }
+.confirm-body p { margin: 8px 0 0; color: var(--text-2); font-size: 14px; line-height: 1.5; white-space: pre-wrap; }
+.confirm-dialog .dialog-actions { margin-top: 6px; }
+.confirm-dialog .dialog-actions .btn { flex: 1; justify-content: center; }
+
+/* Kanal oluşturma (Revize #19) */
+.category-row { display: flex; align-items: center; justify-content: space-between; padding-right: 6px; }
+.category-row .category { flex: 1; }
+.category-add { color: var(--text-3); padding: 14px 4px 4px; display: grid; place-items: center; border-radius: 6px; transition: color 0.12s, transform 0.12s; }
+.category-add:hover { color: var(--text); transform: scale(1.15); }
+.create-channel { width: min(440px, 100%); }
+.kind-picker { display: flex; flex-direction: column; gap: 8px; }
+.kind-option { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; background: var(--bg-3); border: 1px solid var(--line); text-align: left; color: var(--text-2); transition: background 0.12s, border-color 0.12s; }
+.kind-option:hover { background: var(--hover); }
+.kind-option.active { border-color: var(--accent); color: var(--text); background: var(--accent-soft); }
+.kind-option > span:nth-child(2) { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.kind-option small { color: var(--text-3); font-size: 12px; }
+.kind-radio { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line-2); flex: none; }
+.kind-option.active .kind-radio { border-color: var(--accent); box-shadow: inset 0 0 0 4px var(--bg-2); background: var(--accent); }
+.input-with-icon { position: relative; display: flex; align-items: center; margin-top: 6px; }
+.input-with-icon svg { position: absolute; left: 11px; color: var(--text-3); pointer-events: none; }
+.input-with-icon input { padding-left: 34px; width: 100%; margin: 0; }
+
+/* Stickerlar (Revize #15) */
+.sticker-toggle { flex: none; width: 32px; height: 30px; margin: 0 0 3px 4px; border-radius: 8px; display: grid; place-items: center; color: var(--text-2); transition: color 0.15s, background 0.15s; }
+.sticker-toggle:hover, .sticker-toggle.active { color: #fff; background: var(--accent-soft); }
+.sticker-grid { flex: 1; overflow-y: auto; padding: 4px 10px 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; align-content: start; }
+.sticker-cell-wrap { position: relative; }
+.sticker-cell { width: 100%; aspect-ratio: 1; border-radius: 12px; padding: 8px; display: grid; place-items: center; background: var(--bg-3); border: 1px solid transparent; transition: background 0.12s, border-color 0.12s, transform 0.12s var(--ease); }
+.sticker-cell:hover { background: var(--hover); border-color: var(--accent); transform: scale(1.04); }
+.sticker-cell img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.sticker-loading { width: 60%; height: 60%; border-radius: 10px; background: var(--bg-4); animation: fade 1s infinite alternate; }
+.sticker-del { position: absolute; top: -5px; right: -5px; width: 22px; height: 22px; border-radius: 50%; display: none; place-items: center; background: var(--red); color: #fff; box-shadow: var(--shadow-lg); }
+.sticker-cell-wrap:hover .sticker-del { display: grid; }
+.sticker-empty { grid-column: 1 / -1; text-align: center; color: var(--text-3); padding: 40px 20px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.sticker-err { margin: 0 12px 6px; }
+.sticker-message { display: block; width: 160px; height: 160px; object-fit: contain; margin-top: 4px; }
+.sticker-missing { display: inline-flex; align-items: center; gap: 6px; color: var(--text-3); font-style: italic; font-size: 13px; margin-top: 4px; }
+
+/* Müzik botu (Revize #18) */
+.vinyl-avatar { background: transparent !important; overflow: visible; }
+.vinyl { display: block; border-radius: 50%; }
+.vinyl.spinning { animation: vinyl-spin 2.4s linear infinite; }
+@keyframes vinyl-spin { to { transform: rotate(360deg); } }
+.bot-badge { display: inline-flex; align-items: center; height: 15px; padding: 0 5px; margin-left: 6px; border-radius: 4px; background: var(--accent); color: #fff; font-size: 9.5px; font-weight: 800; letter-spacing: 0.04em; vertical-align: 1px; }
+.voice-user.bot .voice-user-name { color: #5fe08f; }
+.voice-user.bot .voice-user-sub { display: block; font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.music-console { flex: none; margin: 10px 16px 0; padding: 12px 14px; border-radius: 16px; background: linear-gradient(135deg, color-mix(in srgb, #1db954 14%, var(--bg-2)), var(--bg-2) 60%); border: 1px solid color-mix(in srgb, #1db954 35%, var(--line-2)); box-shadow: var(--shadow-lg); display: flex; flex-direction: column; gap: 10px; animation: pop 0.18s var(--ease); }
+.music-console.collapsed { padding: 8px 10px; }
+.mc-main { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.mc-thumb { width: 64px; height: 40px; border-radius: 8px; object-fit: cover; flex: none; }
+.mc-meta { flex: 1; min-width: 0; }
+.mc-title { font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mc-sub { display: flex; align-items: center; gap: 4px; color: var(--text-3); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mc-buttons { display: flex; align-items: center; gap: 4px; flex: none; }
+.mc-btn { position: relative; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: var(--text-2); background: var(--bg-3); border: 1px solid var(--line); transition: background 0.12s, color 0.12s, transform 0.12s var(--ease); }
+.mc-btn:hover:not(:disabled) { color: var(--text); background: var(--hover); transform: scale(1.06); }
+.mc-btn.primary { width: 40px; height: 40px; background: #1db954; color: #04130a; border-color: transparent; }
+.mc-btn.primary:hover:not(:disabled) { background: #22d463; color: #04130a; }
+.mc-btn.on { color: #5fe08f; border-color: color-mix(in srgb, #1db954 60%, transparent); }
+.mc-btn.danger:hover:not(:disabled) { color: var(--red); }
+.mc-btn.ghost { background: transparent; border-color: transparent; }
+.music-console.collapsed .mc-btn.ghost svg { transform: rotate(180deg); }
+.mc-count { position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: #1db954; color: #04130a; font-size: 10px; font-weight: 800; display: grid; place-items: center; }
+.mc-bottom { display: flex; align-items: center; gap: 10px; }
+.mc-time { font-size: 11.5px; color: var(--text-3); font-variant-numeric: tabular-nums; flex: none; }
+.mc-progress { flex: 1; height: 5px; border-radius: 3px; background: var(--bg-4); overflow: hidden; }
+.mc-progress.seekable { cursor: pointer; }
+.mc-progress-fill { height: 100%; background: #1db954; border-radius: 3px; transition: width 0.4s linear; }
+.mc-volume { display: flex; flex-direction: row; margin: 0; align-items: center; gap: 6px; color: var(--text-3); font-size: 11.5px; flex: none; }
+.mc-volume input { width: 90px; accent-color: #1db954; margin: 0; }
+.mc-volume span { width: 22px; text-align: right; font-variant-numeric: tabular-nums; }
+.mc-unblock { align-self: flex-start; }
+.mc-queue { display: flex; flex-direction: column; gap: 4px; max-height: 220px; overflow-y: auto; border-top: 1px solid var(--line); padding-top: 8px; }
+.mc-queue-item { display: flex; align-items: center; gap: 10px; padding: 4px 6px; border-radius: 8px; }
+.mc-queue-item:hover { background: var(--hover); }
+.mc-queue-item img { width: 44px; height: 26px; border-radius: 5px; object-fit: cover; flex: none; }
+.mc-qn { width: 16px; text-align: center; color: var(--text-3); font-size: 12px; }
+.mc-queue-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13.5px; }
+.mc-empty { padding: 4px 6px; }
+.mc-err { margin: 0; }
+@media (max-width: 768px) {
+  .music-console { margin: 8px 8px 0; }
+  .mc-thumb { display: none; }
+  .mc-main { flex-wrap: wrap; }
+  .mc-buttons { width: 100%; justify-content: space-between; }
+  .mc-volume input { width: 64px; }
+}

@@ -1,3 +1,4 @@
+import { confirmDialog } from '../lib/dialog'
 import { useEffect, useState } from 'react'
 import { canInstall, isStandalone, onInstallChange, promptInstall } from '../lib/install'
 import { useApp } from '../lib/store'
@@ -7,8 +8,10 @@ import Avatar from './Avatar'
 import Icon from './Icon'
 import { STATUS_OPTIONS, statusLabel } from '../lib/status'
 import ChannelSettingsModal from './ChannelSettingsModal'
+import CreateChannelModal from './CreateChannelModal'
 import SoundpadButton from './Soundpad'
 import VoiceExtrasHost from './VoiceExtrasHost'
+import { MUSIC_BOT_ID, useMusicRows } from '../voice/music'
 import type { SettingsTab } from './SettingsModal'
 
 interface Props {
@@ -23,7 +26,17 @@ interface Props {
 export default function ChannelSidebar({ currentId, onSelect, unread, mentions, onOpenSettings, onFriends }: Props) {
   const { channels, presence, profiles, myRole, isOwner, can, openProfile, openUserMenu, canJoin } = useApp()
   const [chSettings, setChSettings] = useState<string | null>(null)
+  const [creating, setCreating] = useState<'text' | 'voice' | null>(null)
+  const [pendingSelect, setPendingSelect] = useState<string | null>(null)
+  // Yeni kanal realtime ile listeye düşünce ona geç
+  useEffect(() => {
+    if (pendingSelect && channels.some((c) => c.id === pendingSelect)) {
+      onSelect(pendingSelect)
+      setPendingSelect(null)
+    }
+  }, [pendingSelect, channels, onSelect])
   const voice = useVoice()
+  const musicRows = useMusicRows()
   const [menu, setMenu] = useState(false)
 
   const [reloadOpen, setReloadOpen] = useState(false)
@@ -104,7 +117,12 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
       )}
 
       <div className="channel-scroll">
-        <div className="category">Metin kanalları</div>
+        <div className="category-row">
+          <div className="category">Metin kanalları</div>
+          {can('manage_channels') && (
+            <button className="category-add" title="Kanal oluştur" onClick={() => setCreating('text')}><Icon name="plus" size={15} /></button>
+          )}
+        </div>
         {text.map((c) => {
           const n = unread[c.id] ?? 0
           const m = mentions[c.id] ?? 0
@@ -129,7 +147,12 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
           )
         })}
 
-        <div className="category">Ses kanalları</div>
+        <div className="category-row">
+          <div className="category">Ses kanalları</div>
+          {can('manage_channels') && (
+            <button className="category-add" title="Kanal oluştur" onClick={() => setCreating('voice')}><Icon name="plus" size={15} /></button>
+          )}
+        </div>
         {voiceChannels.map((c) => {
           const inside = Object.values(presence).filter((p) => p.voice_channel_id === c.id)
           return (
@@ -163,6 +186,22 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
                   ) : null}
                 </div>
               ))}
+              {musicRows[c.id]?.current && (inside.length > 0 || voice.channelId === c.id) && (
+                // Müzik botu ses odasında her zaman en altta
+                <div
+                  className="voice-user bot"
+                  onClick={() => openProfile(MUSIC_BOT_ID)}
+                  onContextMenu={(e) => { e.preventDefault(); openUserMenu(MUSIC_BOT_ID, e.clientX, e.clientY) }}
+                  title={`Çalıyor: ${musicRows[c.id].current!.title}`}
+                >
+                  <Avatar profile={profiles[MUSIC_BOT_ID]} userId={MUSIC_BOT_ID} size={22} spinning={!musicRows[c.id].paused} />
+                  <span className="voice-user-name">
+                    {profiles[MUSIC_BOT_ID]?.display_name ?? 'CSN Müzik'}
+                    <span className="voice-user-sub">{musicRows[c.id].paused ? '⏸ ' : '🎵 '}{musicRows[c.id].current!.title}</span>
+                  </span>
+                  <span className="bot-badge">BOT</span>
+                </div>
+              )}
             </div>
           )
         })}
@@ -172,6 +211,13 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
       <UserPanel onOpenSettings={onOpenSettings} />
 
       {reloadOpen && <ReloadDialog onClose={() => setReloadOpen(false)} />}
+      {creating && (
+        <CreateChannelModal
+          kind={creating}
+          onClose={() => setCreating(null)}
+          onCreated={(id, k) => { if (k === 'text') setPendingSelect(id) }}
+        />
+      )}
       {chSettings && <ChannelSettingsModal channelId={chSettings} onClose={() => setChSettings(null)} />}
     </aside>
   )
@@ -249,7 +295,7 @@ export function UserPanel({ onOpenSettings }: { onOpenSettings: (tab: SettingsTa
 
   return (
     <div className="user-panel">
-      <button className="icon-btn logout-btn" title="Çıkış yap" onClick={() => confirm('CSN hesabından çıkış yapılsın mı?') && supabase.auth.signOut()}>
+      <button className="icon-btn logout-btn" title="Çıkış yap" onClick={async () => (await confirmDialog({ title: 'Çıkış yapılsın mı?', message: 'CSN hesabından çıkış yapacaksın.', confirmText: 'Çıkış yap', danger: true })) && supabase.auth.signOut()}>
         <Icon name="logout" size={18} />
       </button>
       <button className="user-panel-me" onClick={() => setStatusMenu((s) => !s)}>

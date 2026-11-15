@@ -1,3 +1,4 @@
+import { confirmDialog } from '../lib/dialog'
 import { useRef, useState, type FormEvent } from 'react'
 import { useApp } from '../lib/store'
 import { useVoice } from '../voice/VoiceContext'
@@ -48,7 +49,7 @@ function SoundpadGrid() {
   }
 
   async function remove(s: SoundItem) {
-    if (!confirm(`"${s.name}" sesi silinsin mi?`)) return
+    if (!(await confirmDialog({ title: `"${s.name}" sesi silinsin mi?`, confirmText: 'Sesi sil', danger: true }))) return
     try {
       await deleteSound(s)
     } catch (e) {

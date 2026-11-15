@@ -1,3 +1,4 @@
+import { confirmDialog } from '../lib/dialog'
 import { useState } from 'react'
 import { useApp } from '../lib/store'
 import { acceptFriend, removeFriendship, sendFriendRequest } from '../lib/friends'
@@ -82,7 +83,7 @@ export default function FriendsView() {
                   <button
                     className="icon-btn round danger"
                     title="Arkadaşlıktan çıkar"
-                    onClick={() => fid && confirm(`${name(id)} arkadaşlıktan çıkarılsın mı?`) && run(() => removeFriendship(fid))}
+                    onClick={async () => fid && (await confirmDialog({ title: `${name(id)} arkadaşlıktan çıkarılsın mı?`, confirmText: 'Arkadaşlıktan çıkar', danger: true })) && run(() => removeFriendship(fid))}
                   >
                     <Icon name="x" size={18} />
                   </button>

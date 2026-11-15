@@ -42,6 +42,17 @@ import {
   VideoOff,
   Volume2,
   X,
+  Info,
+  CircleHelp,
+  Sticker,
+  Disc3,
+  Play,
+  Pause,
+  SkipForward,
+  Repeat,
+  Repeat1,
+  ListMusic,
+  Square,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -88,6 +99,17 @@ const icons = {
   wave: AudioWaveform,
   power: Power,
   image: ImagePlus,
+  info: Info,
+  help: CircleHelp,
+  sticker: Sticker,
+  disc: Disc3,
+  play: Play,
+  pause: Pause,
+  skip: SkipForward,
+  repeat: Repeat,
+  repeatOne: Repeat1,
+  queue: ListMusic,
+  stop: Square,
 } satisfies Record<string, LucideIcon>
 
 export type IconName = keyof typeof icons

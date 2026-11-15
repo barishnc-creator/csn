@@ -6,8 +6,11 @@ import type { Attachment, Channel, Message } from '../lib/types'
 import Avatar from './Avatar'
 import Icon from './Icon'
 import GifPicker from './GifPicker'
+import StickerPicker from './StickerPicker'
+import { stickerMessage } from '../lib/stickers'
 import { useVoice } from '../voice/VoiceContext'
 import { runMusicCommand } from '../voice/musicCommands'
+import { enqueue, fetchTitle, parseYouTubeId, useMusicRows } from '../voice/music'
 
 const MAX_FILE = 25 * 1024 * 1024
 const TYPING_TTL = 4000
@@ -23,6 +26,7 @@ interface Props {
 
 export default function Composer({ channel, placeholder, replyTo, onCancelReply, onSend, onEditLast }: Props) {
   const { userId, profiles, members, can } = useApp()
+  const musicRows = useMusicRows()
   const [text, setText] = useState('')
   const [files, setFiles] = useState<File[]>([])
   const [busy, setBusy] = useState(false)
@@ -31,6 +35,7 @@ export default function Composer({ channel, placeholder, replyTo, onCancelReply,
   const voice = useVoice()
   const [dragging, setDragging] = useState(false)
   const [gifOpen, setGifOpen] = useState(false)
+  const [stickerOpen, setStickerOpen] = useState(false)
   const [typers, setTypers] = useState<Record<string, number>>({})
   const [mention, setMention] = useState<{ query: string; start: number; index: number } | null>(null)
   const input = useRef<HTMLTextAreaElement>(null)
@@ -93,7 +98,7 @@ export default function Composer({ channel, placeholder, replyTo, onCancelReply,
     setInfo(null)
     // Müzik komutları (/çal, /geç…) mesaj olarak gönderilmez
     if (content.startsWith('/') && files.length === 0) {
-      const r = await runMusicCommand(content, { voiceChannelId: voice.channelId, userId })
+      const r = await runMusicCommand(content, { voiceChannelId: voice.channelId, userId, textChannelId: channel.kind === 'dm' ? null : channel.id })
       if (r.handled) {
         if (r.ok) {
           setText('')
@@ -103,6 +108,22 @@ export default function Composer({ channel, placeholder, replyTo, onCancelReply,
         requestAnimationFrame(() => input.current?.focus())
         return
       }
+    }
+    // Müzik botu bu kanaldan yönetiliyorsa: tek başına gönderilen YouTube bağlantısı sıraya eklenir
+    const botRow = voice.channelId ? musicRows[voice.channelId] : null
+    const linkId = files.length === 0 && /^\S+$/.test(content) ? parseYouTubeId(content) : null
+    if (linkId && voice.channelId && botRow?.current && botRow.control_channel_id === channel.id) {
+      try {
+        const title = await fetchTitle(linkId)
+        const r = await enqueue(voice.channelId, { videoId: linkId, title, addedBy: userId }, channel.id)
+        setText('')
+        setInfo(r === 'playing' ? `🎵 Çalıyor: ${title}` : `🎵 Sıraya eklendi: ${title}`)
+      } catch (e) {
+        setError((e as Error).message)
+      }
+      setBusy(false)
+      requestAnimationFrame(() => input.current?.focus())
+      return
     }
     try {
       const attachments: Attachment[] = []
@@ -120,6 +141,17 @@ export default function Composer({ channel, placeholder, replyTo, onCancelReply,
       setBusy(false)
       input.current?.focus()
     }
+  }
+
+  async function sendSticker(id: string) {
+    setStickerOpen(false)
+    setError(null)
+    try {
+      await onSend(stickerMessage(id), [])
+    } catch (e) {
+      setError((e as Error).message || 'Sticker gönderilemedi')
+    }
+    input.current?.focus()
   }
 
   async function sendGif(url: string) {
@@ -288,11 +320,15 @@ export default function Composer({ channel, placeholder, replyTo, onCancelReply,
           disabled={busy}
           autoFocus
         />
-        <button className={`gif-toggle${gifOpen ? ' active' : ''}`} onClick={() => setGifOpen((o) => !o)} title="GIF gönder">
+        <button className={`gif-toggle${gifOpen ? ' active' : ''}`} onClick={() => { setStickerOpen(false); setGifOpen((o) => !o) }} title="GIF gönder">
           GIF
+        </button>
+        <button className={`sticker-toggle${stickerOpen ? ' active' : ''}`} onClick={() => { setGifOpen(false); setStickerOpen((o) => !o) }} title="Sticker gönder">
+          <Icon name="sticker" size={20} />
         </button>
       </div>
       {gifOpen && <GifPicker onPick={sendGif} onClose={() => setGifOpen(false)} />}
+      {stickerOpen && <StickerPicker onPick={sendSticker} onClose={() => setStickerOpen(false)} />}
       <div className="composer-footer">
         {error ? (
           <span className="form-error inline">{error}</span>
