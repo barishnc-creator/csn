@@ -7,6 +7,7 @@ import { formatSize, signedUrl } from '../lib/files'
 import { mentionsMe, renderMarkdown } from '../lib/markdown'
 import type { Attachment, Message, Reaction } from '../lib/types'
 import Avatar from './Avatar'
+import { VoiceMessage } from './VoiceRecorder'
 import Icon from './Icon'
 import { isGifMessage } from './GifPicker'
 import { stickerIdOf, useStickers } from '../lib/stickers'
@@ -246,6 +247,7 @@ function AttachmentView({ a }: { a: Attachment }) {
     )
   }
   if (a.type.startsWith('video/') && url) return <video className="attach-video" src={url} controls preload="metadata" />
+  if (a.voice) return <VoiceMessage url={url} duration={a.duration} waveform={a.waveform} />
   if (a.type.startsWith('audio/') && url) return <audio src={url} controls preload="metadata" />
   return (
     <div className="attach-file">

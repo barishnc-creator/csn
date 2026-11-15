@@ -12,6 +12,8 @@ export interface Profile {
   banner_color: string | null
   banner_path: string | null
   tag: number
+  /** Yalnız botlarda: yöneticinin seçtiği aktiflik durumu */
+  bot_presence?: UserStatus | null
 }
 
 export type Permission = 'manage_channels' | 'kick_members' | 'create_invites' | 'manage_messages' | 'mention_everyone' | 'submit_revisions'
@@ -79,6 +81,12 @@ export interface Attachment {
   name: string
   size: number
   type: string
+  /** Sesli mesaj: mikrofonla kaydedildi */
+  voice?: boolean
+  /** Sesli mesaj süresi (saniye) */
+  duration?: number
+  /** Sesli mesaj dalga biçimi: 0-1 arası çubuk yükseklikleri */
+  waveform?: number[]
 }
 
 export interface Message {

@@ -7,6 +7,7 @@ import Avatar from './Avatar'
 import Icon from './Icon'
 import GifPicker from './GifPicker'
 import StickerPicker from './StickerPicker'
+import VoiceRecorder, { voiceSupported, type VoiceClip } from './VoiceRecorder'
 import { stickerMessage } from '../lib/stickers'
 import { useVoice } from '../voice/VoiceContext'
 import { runMusicCommand } from '../voice/musicCommands'
@@ -36,6 +37,7 @@ export default function Composer({ channel, placeholder, replyTo, onCancelReply,
   const [dragging, setDragging] = useState(false)
   const [gifOpen, setGifOpen] = useState(false)
   const [stickerOpen, setStickerOpen] = useState(false)
+  const [recording, setRecording] = useState(false)
   const [typers, setTypers] = useState<Record<string, number>>({})
   const [mention, setMention] = useState<{ query: string; start: number; index: number } | null>(null)
   const input = useRef<HTMLTextAreaElement>(null)
@@ -140,6 +142,21 @@ export default function Composer({ channel, placeholder, replyTo, onCancelReply,
     } finally {
       setBusy(false)
       input.current?.focus()
+    }
+  }
+
+  async function sendVoice(clip: VoiceClip) {
+    setRecording(false)
+    setBusy(true)
+    setError(null)
+    try {
+      const path = await uploadFile(userId, clip.file)
+      await onSend('', [{ path, name: clip.file.name, size: clip.file.size, type: clip.file.type, voice: true, duration: clip.duration, waveform: clip.waveform }])
+    } catch (e) {
+      setError((e as Error).message || 'Sesli mesaj gönderilemedi')
+    } finally {
+      setBusy(false)
+      requestAnimationFrame(() => input.current?.focus())
     }
   }
 
@@ -290,6 +307,9 @@ export default function Composer({ channel, placeholder, replyTo, onCancelReply,
           ))}
         </div>
       )}
+      {recording ? (
+        <VoiceRecorder onDone={sendVoice} onCancel={() => setRecording(false)} onError={(m) => setError(m)} />
+      ) : (
       <div className="composer">
         <button className="icon-btn" onClick={() => fileInput.current?.click()} title="Dosya ekle">
           <Icon name="plusCircle" size={22} />
@@ -326,7 +346,13 @@ export default function Composer({ channel, placeholder, replyTo, onCancelReply,
         <button className={`sticker-toggle${stickerOpen ? ' active' : ''}`} onClick={() => { setGifOpen(false); setStickerOpen((o) => !o) }} title="Sticker gönder">
           <Icon name="sticker" size={20} />
         </button>
+        {voiceSupported() && (
+          <button className="voice-toggle" onClick={() => { setGifOpen(false); setStickerOpen(false); setError(null); setRecording(true) }} disabled={busy} title="Sesli mesaj kaydet">
+            <Icon name="mic" size={20} />
+          </button>
+        )}
       </div>
+      )}
       {gifOpen && <GifPicker onPick={sendGif} onClose={() => setGifOpen(false)} />}
       {stickerOpen && <StickerPicker onPick={sendSticker} onClose={() => setStickerOpen(false)} />}
       <div className="composer-footer">
@@ -342,6 +368,8 @@ export default function Composer({ channel, placeholder, replyTo, onCancelReply,
             <span className="typing-dots"><i /><i /><i /></span>
             <strong>{typingNames.slice(0, 3).join(', ')}</strong> {typingNames.length > 1 ? 'yazıyorlar…' : 'yazıyor…'}
           </span>
+        ) : busy && !text.trim() && files.length === 0 ? (
+          <span className="muted">Sesli mesaj gönderiliyor…</span>
         ) : busy && files.length ? (
           <span className="muted">Yükleniyor…</span>
         ) : null}

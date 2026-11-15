@@ -14,8 +14,10 @@ import { inviteLink } from '../lib/invite'
 import { ACCENTS, THEMES, type ThemeId } from '../lib/theme'
 import ChannelSettingsModal from './ChannelSettingsModal'
 import { ProfileCard } from './UserProfileModal'
+import { MUSIC_BOT_ID } from '../lib/bots'
+import type { UserStatus } from '../lib/types'
 
-export type SettingsTab = 'profile' | 'voice' | 'appearance' | 'invites' | 'channels' | 'roles' | 'members' | 'revisions'
+export type SettingsTab = 'profile' | 'voice' | 'appearance' | 'invites' | 'channels' | 'roles' | 'members' | 'bot' | 'revisions'
 
 const tabMeta: Record<SettingsTab, { label: string; icon: IconName; group: string }> = {
   profile: { label: 'Profilim', icon: 'users', group: 'Kullanıcı ayarları' },
@@ -25,6 +27,7 @@ const tabMeta: Record<SettingsTab, { label: string; icon: IconName; group: strin
   channels: { label: 'Kanallar', icon: 'hash', group: 'Sunucu' },
   roles: { label: 'Roller', icon: 'shield', group: 'Sunucu' },
   members: { label: 'Üyeler', icon: 'users', group: 'Sunucu' },
+  bot: { label: 'Müzik botu', icon: 'disc', group: 'Sunucu' },
   revisions: { label: 'Revizeler', icon: 'file', group: 'Sunucu' },
 }
 
@@ -42,6 +45,7 @@ export default function SettingsModal({ initialTab, onClose }: { initialTab: Set
     channels: can('manage_channels'),
     roles: isAdmin,
     members: isAdmin || can('kick_members'),
+    bot: isAdmin,
     revisions: can('submit_revisions'),
   }
 
@@ -98,6 +102,7 @@ export default function SettingsModal({ initialTab, onClose }: { initialTab: Set
             {tab === 'channels' && show.channels && <ChannelsTab />}
             {tab === 'roles' && show.roles && <RolesTab />}
             {tab === 'members' && show.members && <MembersTab />}
+            {tab === 'bot' && show.bot && <BotTab />}
             {tab === 'revisions' && show.revisions && <RevisionsTab />}
           </div>
         </section>
@@ -967,6 +972,135 @@ function AppearanceTab() {
         </div>
         <p className="muted small">Düğmeler, seçili kanal, bağlantılar ve vurgular bu renkte görünür.</p>
       </section>
+    </div>
+  )
+}
+
+// ───────── Müzik botu (yalnız yöneticiler) ─────────
+
+const BOT_STATUSES: { id: UserStatus; label: string; hint: string }[] = [
+  { id: 'online', label: 'Çevrimiçi', hint: 'Yeşil nokta' },
+  { id: 'idle', label: 'Boşta', hint: 'Sarı ay' },
+  { id: 'dnd', label: 'Rahatsız etmeyin', hint: 'Kırmızı' },
+  { id: 'invisible', label: 'Görünmez', hint: 'Çevrimdışı görünür' },
+]
+
+function BotTab() {
+  const { profiles, userId, refreshProfiles } = useApp()
+  const bot = profiles[MUSIC_BOT_ID]
+  const [name, setName] = useState(bot?.display_name ?? 'CSN Müzik')
+  const [status, setStatus] = useState(bot?.custom_status ?? '')
+  const [bio, setBio] = useState(bot?.bio ?? '')
+  const [presence, setPresence] = useState<UserStatus>(bot?.bot_presence ?? 'online')
+  const [avatar, setAvatar] = useState<string | null>(bot?.avatar_path ?? null)
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [busy, setBusy] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  const dirty =
+    name !== (bot?.display_name ?? '') ||
+    status !== (bot?.custom_status ?? '') ||
+    bio !== (bot?.bio ?? '') ||
+    presence !== (bot?.bot_presence ?? 'online') ||
+    avatar !== (bot?.avatar_path ?? null)
+
+  async function pickAvatar(file: File) {
+    if (!file.type.startsWith('image/')) return setMsg({ ok: false, text: 'Lütfen bir resim seç' })
+    if (file.size > 5 * 1024 * 1024) return setMsg({ ok: false, text: 'Resim en fazla 5 MB olabilir' })
+    try {
+      setBusy(true)
+      setAvatar(await uploadFile(userId, file))
+      setMsg(null)
+    } catch (e) {
+      setMsg({ ok: false, text: (e as Error).message })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function save() {
+    setBusy(true)
+    const { error } = await supabase.rpc('update_bot_profile', {
+      bot: MUSIC_BOT_ID,
+      p_display_name: name.trim(),
+      p_avatar_path: avatar,
+      p_custom_status: status.trim(),
+      p_bio: bio.trim(),
+      p_presence: presence,
+    })
+    setBusy(false)
+    setMsg(error ? { ok: false, text: error.message } : { ok: true, text: 'Bot güncellendi' })
+    if (!error) refreshProfiles()
+  }
+
+  function reset() {
+    setName(bot?.display_name ?? 'CSN Müzik')
+    setStatus(bot?.custom_status ?? '')
+    setBio(bot?.bio ?? '')
+    setPresence(bot?.bot_presence ?? 'online')
+    setAvatar(bot?.avatar_path ?? null)
+  }
+
+  const preview = bot
+    ? { ...bot, display_name: name || bot.display_name, custom_status: status || null, bio: bio || null, avatar_path: avatar }
+    : null
+
+  return (
+    <div className="settings-page profile-editor">
+      <div className="profile-form">
+        <p className="muted">Botun adı, resmi ve durumu sunucudaki herkese anında görünür. Bota mesaj ya da arkadaşlık isteği gönderilemez; rolünü Üyeler bölümünden ya da sağ tıkla verebilirsin.</p>
+        <div className="field-card">
+          <div className="avatar-row">
+            <Avatar profile={preview} userId={MUSIC_BOT_ID} size={64} />
+            <div>
+              <div className="row">
+                <button className="btn" disabled={busy} onClick={() => fileRef.current?.click()}><Icon name="image" size={16} /> Resim yükle</button>
+                {avatar && <button className="btn ghost danger-text" onClick={() => setAvatar(null)}>Plağa dön</button>}
+              </div>
+              <div className="muted small">PNG/JPG, en fazla 5 MB. Resim yoksa dönen plak görünür.</div>
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) pickAvatar(f) }} />
+          </div>
+        </div>
+        <label>
+          Bot adı
+          <input value={name} onChange={(e) => setName(e.target.value)} maxLength={32} />
+        </label>
+        <div>
+          <div className="field-label">Aktiflik durumu</div>
+          <div className="bot-status-grid">
+            {BOT_STATUSES.map((s) => (
+              <button key={s.id} className={`bot-status-opt${presence === s.id ? ' active' : ''}`} onClick={() => setPresence(s.id)}>
+                <span className={`status-dot static ${s.id === 'invisible' ? 'offline' : s.id}`} />
+                <span><strong>{s.label}</strong><small>{s.hint}</small></span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <label>
+          Özel durum <span className="hint">çalarken şarkı adı görünür</span>
+          <input value={status} onChange={(e) => setStatus(e.target.value)} maxLength={80} placeholder="ör. Ses kanalında /çal yaz" />
+        </label>
+        <label>
+          Hakkında <span className="hint">{bio.length}/300</span>
+          <textarea value={bio} onChange={(e) => setBio(e.target.value)} maxLength={300} rows={4} />
+        </label>
+      </div>
+      <div className="profile-preview">
+        <div className="field-label">Önizleme</div>
+        <ProfileCard profile={preview} userId={MUSIC_BOT_ID} status={presence === 'invisible' ? 'offline' : presence} />
+      </div>
+      {(dirty || msg) && (
+        <div className={`save-bar${dirty ? ' show' : ''}`}>
+          <span>{dirty ? 'Kaydedilmemiş değişikliklerin var.' : msg?.text}</span>
+          {dirty && (
+            <>
+              <button className="btn ghost small" onClick={reset}>Sıfırla</button>
+              <button className="btn success small" onClick={save} disabled={!name.trim() || busy}>Değişiklikleri kaydet</button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   )
 }

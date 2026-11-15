@@ -11,8 +11,8 @@ export default function MemberList({ onOpenRevisions }: { onOpenRevisions?: () =
   const { members, profiles, presence, roles, rolesOf, nameColor, openProfile, openUserMenu, userId, pendingRevisions, isOwner } = useApp()
   const musicRows = useMusicRows()
   const playing = Object.values(musicRows).find((r) => r.current)
-  // Müzik botu her zaman çevrimiçi görünür
-  const isOn = (uid: string) => uid === MUSIC_BOT_ID || (!!presence[uid] && (presence[uid].status !== 'invisible' || uid === userId))
+  // Müzik botunun durumu store'da presence'a eklenir (görünmez seçilirse çevrimdışı)
+  const isOn = (uid: string) => !!presence[uid] && (presence[uid].status !== 'invisible' || uid === userId)
   const name = (id: string) => profiles[id]?.display_name ?? ''
   const byName = (a: Member, b: Member) => name(a.user_id).localeCompare(name(b.user_id), 'tr')
 
@@ -43,7 +43,7 @@ export default function MemberList({ onOpenRevisions }: { onOpenRevisions?: () =
       <header className="member-list-head">
         <div className="member-list-title">
           <Icon name="friends" size={16} />
-          <span>Sunucu üyeleri</span>
+          <span>SUNUCU ÜYELERİ</span>
         </div>
         <div className="member-list-stats">
           <span className="stat-pill online"><i /> {online.length} çevrimiçi</span>
@@ -59,12 +59,15 @@ export default function MemberList({ onOpenRevisions }: { onOpenRevisions?: () =
       </header>
       {groups.map((g) => (
         <section key={g.key}>
-          <div className="category">{g.label} — {g.list.length}</div>
+          <div className="member-group-head" style={{ ['--gc' as string]: g.color ?? undefined }}>
+            <span className="member-group-name">{g.label}</span>
+            <span className="member-group-count">{g.list.length}</span>
+          </div>
           {g.list.sort(byName).map((m) => {
             const p = presence[m.user_id] ?? { status: 'online' as const, streaming: false, voice_channel_id: null }
             const isBot = m.user_id === MUSIC_BOT_ID
             return (
-              <button key={m.user_id} className="member" onClick={() => openProfile(m.user_id)} onContextMenu={(e) => { e.preventDefault(); openUserMenu(m.user_id, e.clientX, e.clientY) }}>
+              <button key={m.user_id} className={`member member-card${isBot ? ' bot' : ''}`} style={{ ['--mc' as string]: nameColor(m.user_id) ?? undefined }} onClick={() => openProfile(m.user_id)} onContextMenu={(e) => { e.preventDefault(); openUserMenu(m.user_id, e.clientX, e.clientY) }}>
                 <Avatar profile={profiles[m.user_id]} userId={m.user_id} size={32} status={p.status} spinning={isBot && !!playing && !playing.paused} />
                 <div className="member-text">
                   <div className="member-name" style={{ color: nameColor(m.user_id) }}>
@@ -89,9 +92,12 @@ export default function MemberList({ onOpenRevisions }: { onOpenRevisions?: () =
       ))}
       {offline.length > 0 && (
         <section>
-          <div className="category">Çevrimdışı — {offline.length}</div>
+          <div className="member-group-head">
+            <span className="member-group-name">Çevrimdışı</span>
+            <span className="member-group-count">{offline.length}</span>
+          </div>
           {offline.map((m) => (
-            <button key={m.user_id} className="member offline" onClick={() => openProfile(m.user_id)} onContextMenu={(e) => { e.preventDefault(); openUserMenu(m.user_id, e.clientX, e.clientY) }}>
+            <button key={m.user_id} className="member member-card offline" onClick={() => openProfile(m.user_id)} onContextMenu={(e) => { e.preventDefault(); openUserMenu(m.user_id, e.clientX, e.clientY) }}>
               <Avatar profile={profiles[m.user_id]} userId={m.user_id} size={32} status="offline" />
               <div className="member-text">
                 <div className="member-name">{name(m.user_id) || 'Üye'}</div>

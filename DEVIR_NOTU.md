@@ -1,7 +1,7 @@
 # CSN — Devir notu
 
 > Yeni bir oturum buradan devam eder. Önce bunu, sonra `CLAUDE.md`'yi oku.
-> Son güncelleme: 2026-11-15 (revize #15, #16, #18, #19 yayında)
+> Son güncelleme: 2026-11-15 (revize #17, #20-#23 yayında)
 
 ## Durum özeti
 CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'e her push'ta `.github/workflows/pages.yml` ile yayınlanır).
@@ -42,10 +42,14 @@ CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'
 | Revize #16 uygulamaya uygun onay/uyarı kutuları (`src/lib/dialog.tsx`: `confirmDialog`, `alertDialog`); tüm `confirm()/alert()` kaldırıldı | ✅ |
 | Revize #18 müzik botu (`0016`): "CSN Müzik" bot üyesi (plak avatar, rol verilebilir, hep çevrimiçi), ses odasında en altta, sağ tık → müzik ses çubuğu, komutun yazıldığı kanalda konsol (`MusicConsole.tsx`: duraklat/devam/geç/tekrar/sıra/durdur/ses), bu kanala atılan YouTube bağlantısı sıraya girer, `/tekrar`, `/ses`; sahip notu: alttaki revize bildirimi kaldırıldı, üye panelindeki kaldı | ✅ canlı denenmedi |
 | Revize #19 kategori başlığında "+" ile hızlı kanal oluşturma (`CreateChannelModal.tsx`, `manage_channels` yetkisi) | ✅ |
+| Revize #17 üye paneli: BÜYÜK HARF başlık, rol renkli kutucuk kartlar, grup başlığında sayı rozeti (`MemberList.tsx`, `styles.css` sonu) | ✅ sahte veriyle ekran görüntüsü |
+| Revize #20+#22 müzik botu ayarları (`0017`): Ayarlar → Müzik botu (yalnız yöneticiler) ad, resim, özel durum, hakkında, aktiflik durumu (`update_bot_profile` RPC, `profiles.bot_presence`, store'da presence'a eklenir); bota arkadaşlık isteği (tetikleyici) ve DM (`open_dm`) sunucuda reddedilir | ✅ SQL ile test edildi, canlı denenmedi |
+| Revize #21 masaüstü 0.1.2: Alt+Enter / F11 tam ekran, koyu başlık çubuğu (`nativeTheme.themeSource='dark'`), ekranı kaplayarak açılır | ✅ derleniyor, **Windows'ta denenmedi** |
+| Revize #23 sesli mesaj (`VoiceRecorder.tsx`): mesaj kutusunda mikrofon düğmesi, en fazla 5 dk, Enter gönder / Esc vazgeç, dalga biçimli oynatıcı; ek `voice/duration/waveform` alanlarıyla saklanır | ✅ Chromium sahte mikrofonla kayıt+oynatma denendi |
 | Electron masaüstü uygulaması (`desktop/`), kurulum: Actions → "Masaüstü (Windows)" ya da `desktop-v*` etiketi | ✅ 0.1.1 yayında: https://github.com/barishnc-creator/csn/releases/latest (Actions → "Masaüstü (Windows)" elle başlatılınca `desktop/package.json` sürümüyle yeni Release açar; bu ortamdan etiket push'u engelli) |
 
 ## Migrationlar (sırayla uygulandı)
-`0001_init` → `0002_lock_anon_functions` → `0003_owner_and_revisions` → `0004_dm_kind` → `0005_roles_dm_reactions_pins_profile` → `0006_server_reload` → `0007_friendships` → `0008_tag_banner` → `0009_channel_join_roles` → `0010_channels_select_row_based` → `0011_submit_revisions_perm` → `0012_music` → `0013_soundpad` → `0014_server_theme` → `0015_stickers` → `0016_music_bot`
+`0001_init` → `0002_lock_anon_functions` → `0003_owner_and_revisions` → `0004_dm_kind` → `0005_roles_dm_reactions_pins_profile` → `0006_server_reload` → `0007_friendships` → `0008_tag_banner` → `0009_channel_join_roles` → `0010_channels_select_row_based` → `0011_submit_revisions_perm` → `0012_music` → `0013_soundpad` → `0014_server_theme` → `0015_stickers` → `0016_music_bot` → `0017_bot_settings`
 
 ## Bekleyen karar
 - Masaüstü .exe imzasız: Windows 11 "Akıllı Uygulama Denetimi" açık olan bilgisayarlarda engelleniyor (egunesx'te oldu). Geçici çözüm: PWA olarak yükleme (⚙️ → Uygulama olarak yükle). Kalıcı çözüm seçenekleri (Microsoft Store, ücretsiz bireysel hesap / kod imzalama sertifikası) kullanıcıya sunuldu; **"şimdilik kalsın" dedi**, sormadan başlama.
@@ -54,11 +58,9 @@ CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'
 - Supabase'te `insert(...).select()` (RETURNING) kullanırken okuma kuralının yeni satırı görebildiğinden emin ol (kanallar için `0010` ile düzeltildi).
 - Bazı migrationlarda (politika silme) Supabase MCP kullanıcıdan onay ister; yanıt gelmezse zaman aşımı olur, kullanıcıya söyle.
 
-## Sıradaki işler (onaylı revizeler, sırayla yap)
-- **#17** Sunucu üyeleri paneli: başlık BÜYÜK HARF, üyeler daha estetik kutucuklar içinde (`MemberList.tsx` + `styles.css`)
-- **#20 + #22** Müzik botu (Discord botu mantığı): `0016` ile "CSN Müzik" üyesi zaten var (`src/lib/bots.ts`), sağda görünüyor, sesli odada en altta, rol verilebiliyor, DM/arkadaş düğmeleri gizli (sağ tık + profil kartı). Eksik: yöneticiler botun **adını, resmini, aktiflik durumunu** düzenleyebilsin (ör. Ayarlar'da "Müzik botu" bölümü; bot profilini güncellemek için RLS'te is_admin'e izin veren politika ya da security definer RPC gerekir). Arkadaşlık isteği/DM'yi sunucu tarafında da engelle (friendships insert ve open_dm'de bot id reddi).
-- **#21** Masaüstü (Electron, `desktop/`): Alt+Enter (ve F11) tam ekran; üstteki beyaz menü çubuğu kalksın (`autoHideMenuBar`/`Menu.setApplicationMenu(null)`). Sonra `desktop/package.json` sürümünü artır, kullanıcıya Actions → "Masaüstü (Windows)" çalıştırmasını söyle.
-- **#23** Genel (metin) kanala sesli mesaj: mikrofonla kayıt (MediaRecorder, webm/ogg), `files` kovasına yükle, mesajda ek olarak oynatıcıyla göster.
+## Sıradaki işler
+- Onaylı revize yok (#17, #20-#23 bitti). Yeni istek için `select * from revisions where status='approved'`.
+- Masaüstü 0.1.2 Release'i: Actions → "Masaüstü (Windows)" (bu oturumda tetiklenmeye çalışıldı; bkz. git log / Releases).
 
 ## Sıradaki adaylar
 - Müzik botu canlıda denenmeli (iki kişiyle: sıra, tekrar, konsol). Bot hesabı `b0700000-0000-4000-8000-00000000b070` (`src/lib/bots.ts`)

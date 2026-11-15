@@ -3,6 +3,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import { BUILD_ID, fetchLatestBuild, hardReload } from './version'
 import { applyTheme, type ThemeId } from './theme'
+import { MUSIC_BOT_ID } from './bots'
 import type {
   Channel,
   ChannelMember,
@@ -160,7 +161,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
   const refreshProfiles = useCallback(async () => {
     const { data } = await supabase
       .from('profiles')
-      .select('id, display_name, avatar_path, custom_status, bio, pronouns, banner_color, banner_path, tag')
+      .select('id, display_name, avatar_path, custom_status, bio, pronouns, banner_color, banner_path, tag, bot_presence')
     if (data) setProfiles(Object.fromEntries(data.map((p) => [p.id, p as Profile])))
   }, [])
 
@@ -385,6 +386,12 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
 
   const value = useMemo<AppState>(() => {
     const me = members.find((m) => m.user_id === userId)
+    // Müzik botu: yöneticinin seçtiği durumla görünür (görünmez = çevrimdışı)
+    const botStatus = profiles[MUSIC_BOT_ID]?.bot_presence ?? 'online'
+    const presenceAll: Record<string, PresenceState> =
+      botStatus === 'invisible'
+        ? presence
+        : { ...presence, [MUSIC_BOT_ID]: { user_id: MUSIC_BOT_ID, status: botStatus, voice_channel_id: null, muted: false, deafened: false, streaming: false } }
     const roleById = new Map(roles.map((r) => [r.id, r]))
     const rolesOf = (uid: string) =>
       memberRoles
@@ -417,7 +424,7 @@ export function AppProvider({ userId, children }: { userId: string; children: Re
         if (f.status === 'accepted') return { state: 'friends', id: f.id }
         return { state: f.requester === userId ? 'outgoing' : 'incoming', id: f.id }
       },
-      presence,
+      presence: presenceAll,
       myStatus: effectiveStatus,
       myChosenStatus: myStatus,
       setMyStatus,

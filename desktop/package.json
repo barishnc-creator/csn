@@ -1,7 +1,7 @@
 {
   "name": "csn-desktop",
   "productName": "CSN",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "CSN masaüstü uygulaması",
   "author": "CSN",
   "private": true,

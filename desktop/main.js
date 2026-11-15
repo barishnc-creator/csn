@@ -3,7 +3,7 @@
 // uygulama içi seçiciyi kullanır (window.csnDesktop köprüsü, preload.js).
 'use strict'
 
-const { app, BrowserWindow, desktopCapturer, ipcMain, session, shell, Menu } = require('electron')
+const { app, BrowserWindow, desktopCapturer, ipcMain, session, shell, Menu, nativeTheme } = require('electron')
 const path = require('node:path')
 
 const APP_URL = 'https://barishnc-creator.github.io/csn/'
@@ -97,7 +97,10 @@ if (!app.requestSingleInstanceLock()) {
       },
     })
 
-    win.once('ready-to-show', () => win.show())
+    win.once('ready-to-show', () => {
+      win.maximize()
+      win.show()
+    })
     // Gerçek uygulama hissi: tarayıcı gibi yakınlaştırılmasın (Ctrl+tekerlek / sıkıştırma)
     win.webContents.setVisualZoomLevelLimits(1, 1).catch(() => {})
     win.webContents.on('before-input-event', (event, input) => {
@@ -116,11 +119,15 @@ if (!app.requestSingleInstanceLock()) {
       if (isSafeExternal(url)) shell.openExternal(url)
     })
 
-    // Menü yok; F5 / Ctrl+R yenile, Ctrl+Shift+I geliştirici araçları
+    // Menü yok; Alt+Enter / F11 tam ekran aç/kapat,
+    // F5 / Ctrl+R yenile, Ctrl+Shift+I geliştirici araçları
     win.webContents.on('before-input-event', (e, input) => {
       if (input.type !== 'keyDown') return
       const key = input.key.toLowerCase()
-      if (input.key === 'F5' || (input.control && key === 'r')) {
+      if ((input.alt && input.key === 'Enter') || input.key === 'F11') {
+        win.setFullScreen(!win.isFullScreen())
+        e.preventDefault()
+      } else if (input.key === 'F5' || (input.control && key === 'r')) {
         win.webContents.reload()
         e.preventDefault()
       } else if (input.control && input.shift && key === 'i') {
@@ -145,6 +152,8 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(() => {
     Menu.setApplicationMenu(null)
+    // Windows'ta pencere başlık çubuğu beyaz yerine koyu olsun
+    nativeTheme.themeSource = 'dark'
     const ses = session.defaultSession
 
     // İzinler yalnız CSN sitesine
