@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
+import { clearPendingInvite, pendingInvite } from '../lib/invite'
 
 export default function JoinScreen({ session, onJoined }: { session: Session; onJoined: () => void }) {
-  const metaCode = (session.user.user_metadata?.invite_code as string | undefined) ?? ''
+  const metaCode = (session.user.user_metadata?.invite_code as string | undefined) || pendingInvite()
   const [code, setCode] = useState(metaCode)
   const [initialized, setInitialized] = useState<boolean | null>(null)
   const [busy, setBusy] = useState(false)
@@ -16,7 +17,10 @@ export default function JoinScreen({ session, onJoined }: { session: Session; on
     const { error } = await supabase.rpc('redeem_invite', { invite_code: c })
     setBusy(false)
     if (error) setError(error.message)
-    else onJoined()
+    else {
+      clearPendingInvite()
+      onJoined()
+    }
   }
 
   useEffect(() => {

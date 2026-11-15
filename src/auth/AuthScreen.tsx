@@ -1,12 +1,13 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
+import { pendingInvite } from '../lib/invite'
 
 export default function AuthScreen() {
-  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [mode, setMode] = useState<'login' | 'register'>(() => (pendingInvite() ? 'register' : 'login'))
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
-  const [invite, setInvite] = useState('')
+  const [invite, setInvite] = useState(pendingInvite)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)

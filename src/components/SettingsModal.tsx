@@ -9,6 +9,7 @@ import { useVoice } from '../voice/VoiceContext'
 import Avatar from './Avatar'
 import Icon, { type IconName } from './Icon'
 import RevisionsTab from './RevisionsTab'
+import { inviteLink } from '../lib/invite'
 import ChannelSettingsModal from './ChannelSettingsModal'
 import { ProfileCard } from './UserProfileModal'
 
@@ -427,15 +428,31 @@ function InvitesTab() {
     load()
   }
 
-  function copy(code: string) {
-    navigator.clipboard?.writeText(code)
-    setCopied(code)
+  function copy(text: string, key: string) {
+    navigator.clipboard?.writeText(text)
+    setCopied(key)
     setTimeout(() => setCopied(null), 1500)
+  }
+
+  async function share(code: string) {
+    const url = inviteLink(code)
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'CSN daveti', text: 'CSN sunucumuza katıl!', url })
+        return
+      } catch {
+        // kullanıcı vazgeçti → kopyalamaya düş
+      }
+    }
+    copy(url, `link-${code}`)
   }
 
   return (
     <div className="settings-page">
-      <p className="muted">Arkadaşına bir davet kodu ver. Kayıt olurken bu kodu girer ve sunucuya katılır.</p>
+      <p className="muted">
+        Kod oluştur ve <strong>Bağlantıyı paylaş</strong>'a bas: bağlantı kopyalanır (telefonda paylaşım menüsü açılır).
+        Arkadaşın bağlantıya tıklayınca kayıt ekranı davet kodu dolu açılır; yalnızca adını, e-postasını ve şifresini girer.
+      </p>
       <div className="row">
         <label>
           Geçerlilik
@@ -467,7 +484,17 @@ function InvitesTab() {
             const expired = (i.expires_at && new Date(i.expires_at) < new Date()) || (i.max_uses !== null && i.uses >= i.max_uses)
             return (
               <tr key={i.code} className={expired ? 'dim' : ''}>
-                <td><code className="invite-code" onClick={() => copy(i.code)} title="Kopyala">{i.code}</code>{copied === i.code && <span className="small muted"> kopyalandı</span>}</td>
+                <td>
+                  <div className="invite-cell">
+                    <code className="invite-code" onClick={() => copy(i.code, i.code)} title="Kodu kopyala">{i.code}</code>
+                    {!expired && (
+                      <button className="btn primary small" onClick={() => share(i.code)} title={inviteLink(i.code)}>
+                        <Icon name="userPlus" size={14} /> {copied === `link-${i.code}` ? 'Bağlantı kopyalandı' : 'Bağlantıyı paylaş'}
+                      </button>
+                    )}
+                    {copied === i.code && <span className="small muted">kod kopyalandı</span>}
+                  </div>
+                </td>
                 <td>{profiles[i.created_by]?.display_name ?? '—'}</td>
                 <td>{i.uses}{i.max_uses ? ` / ${i.max_uses}` : ''}</td>
                 <td>{i.expires_at ? new Date(i.expires_at).toLocaleDateString('tr-TR') : 'Süresiz'}</td>
