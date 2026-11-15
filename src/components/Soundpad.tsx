@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useApp } from '../lib/store'
 import { useVoice } from '../voice/VoiceContext'
 import { addSound, deleteSound, soundpad, useSoundpad, validateSoundFile, type SoundItem } from '../voice/soundpad'
-import { comboFromEvent, comboLabel, soundpadKeys, useSoundpadKeys } from '../voice/soundpadKeys'
+import { comboFromEvent, comboLabel, isSingleKey, isTypingTarget, soundpadKeys, useSoundpadKeys } from '../voice/soundpadKeys'
 import AnchoredPopover from './Popover'
 import Icon from './Icon'
 
@@ -44,6 +44,8 @@ export function SoundpadHotkeys() {
       if (!combo) return
       const id = soundpadKeys.find(combo)
       if (!id) return
+      // Tek tuşlu kısayol mesaj yazarken çalmaz
+      if (isSingleKey(combo) && isTypingTarget(e)) return
       e.preventDefault()
       soundpad.send(id, userId)
     }
@@ -67,7 +69,6 @@ function SoundpadGrid() {
   const keys = useSoundpadKeys()
   // Tuş atama: hangi ses için kombinasyon bekleniyor
   const [binding, setBinding] = useState<string | null>(null)
-  const [bindHint, setBindHint] = useState<string | null>(null)
   useEffect(() => {
     if (!binding) return
     const down = (e: KeyboardEvent) => {
@@ -79,16 +80,14 @@ function SoundpadGrid() {
         return setBinding(null)
       }
       const combo = comboFromEvent(e)
-      if (!combo) {
-        if (!/^(Control|Alt|Shift|Meta|OS)/.test(e.code)) setBindHint('En az iki tuş: Ctrl, Alt ya da Shift ile birlikte bas')
-        return
-      }
+      if (!combo) return // yalnız Ctrl/Alt/Shift: asıl tuşu bekle
+      if (combo === voice.settings.pttKey) return // bas-konuş tuşu ayrılmış
       soundpadKeys.set(binding, combo)
       setBinding(null)
     }
     window.addEventListener('keydown', down, true)
     return () => window.removeEventListener('keydown', down, true)
-  }, [binding])
+  }, [binding, voice.settings.pttKey])
 
   function play(s: SoundItem) {
     const e = soundpad.send(s.id, userId)
@@ -139,10 +138,10 @@ function SoundpadGrid() {
                   </button>
                   <button
                     className={`sound-key${keys[s.id] ? ' set' : ''}${binding === s.id ? ' capturing' : ''}`}
-                    onClick={() => { setBindHint(null); setBinding(binding === s.id ? null : s.id) }}
+                    onClick={() => setBinding(binding === s.id ? null : s.id)}
                     title={keys[s.id] ? 'Kısayolu değiştir' : 'Kısayol ata'}
                   >
-                    {binding === s.id ? 'Tuşlara bas…' : keys[s.id] ? comboLabel(keys[s.id]) : '⌨ Tuş ata'}
+                    {binding === s.id ? 'Bir tuşa bas…' : keys[s.id] ? comboLabel(keys[s.id]) : '⌨ Tuş ata'}
                   </button>
                   {canDelete(s) && (
                     <button className="sound-del" onClick={() => remove(s)} title="Sil">
@@ -158,7 +157,7 @@ function SoundpadGrid() {
 
       {binding && (
         <div className="small sound-bind-hint">
-          {bindHint ?? 'Kısayol için en az iki tuşa birlikte bas (ör. Ctrl + 1, Alt + Q).'} Esc: vazgeç · Backspace: kaldır
+          Kısayol için bir tuşa bas (ör. 1, Q, F2; istersen Ctrl/Alt ile). Esc: vazgeç · Backspace: kaldır
         </div>
       )}
       <label className="music-volume" title="Yalnız sende değişir">

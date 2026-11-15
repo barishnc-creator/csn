@@ -1,4 +1,4 @@
-// Soundpad tuş atamaları: her ses için kişiye özel kısayol (en az iki tuş: değiştirici + tuş).
+// Soundpad tuş atamaları: her ses için kişiye özel tek tuşluk kısayol (istenirse Ctrl/Alt/Shift ile).
 // Bu cihazda saklanır (localStorage); başkalarını etkilemez.
 import { useSyncExternalStore } from 'react'
 
@@ -61,12 +61,20 @@ export function useSoundpadKeys(): Binds {
 
 const isModifierCode = (code: string) => /^(Control|Alt|Shift|Meta|OS)(Left|Right)?$/.test(code)
 
-/** Basılan tuşlardan kombinasyon; yalnız değiştirici basılıysa ya da hiç değiştirici yoksa null */
+/** Basılan tuştan kısayol; yalnız değiştirici (Ctrl/Alt/Shift) basılıysa null */
 export function comboFromEvent(e: KeyboardEvent): string | null {
   if (!e.code || isModifierCode(e.code)) return null
   const mods = [e.ctrlKey && 'Ctrl', e.altKey && 'Alt', e.shiftKey && 'Shift', e.metaKey && 'Meta'].filter(Boolean) as string[]
-  if (mods.length === 0) return null // en az iki tuş
   return [...mods, e.code].join('+')
+}
+
+/** Değiştiricisiz tek tuş mu (yazı yazarken çalmamalı) */
+export const isSingleKey = (combo: string) => !combo.includes('+')
+
+/** Odak bir yazı alanında mı */
+export function isTypingTarget(e: KeyboardEvent) {
+  const t = e.target as HTMLElement | null
+  return !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)
 }
 
 /** Ekranda gösterilecek ad: "Ctrl + 1" */
