@@ -46,6 +46,7 @@ CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'
 | Revize #20+#22 müzik botu ayarları (`0017`): Ayarlar → Müzik botu (yalnız yöneticiler) ad, resim, özel durum, hakkında, aktiflik durumu (`update_bot_profile` RPC, `profiles.bot_presence`, store'da presence'a eklenir); bota arkadaşlık isteği (tetikleyici) ve DM (`open_dm`) sunucuda reddedilir | ✅ SQL ile test edildi, canlı denenmedi |
 | Revize #21 masaüstü 0.1.2: Alt+Enter / F11 tam ekran, koyu başlık çubuğu (`nativeTheme.themeSource='dark'`), ekranı kaplayarak açılır | ✅ derleniyor, **Windows'ta denenmedi** |
 | Revize #23 sesli mesaj (`VoiceRecorder.tsx`): mesaj kutusunda mikrofon düğmesi, en fazla 5 dk, Enter gönder / Esc vazgeç, dalga biçimli oynatıcı; ek `voice/duration/waveform` alanlarıyla saklanır | ✅ Chromium sahte mikrofonla kayıt+oynatma denendi |
+| Masaüstü 0.1.3: Windows başlık çubuğu yerine sayfanın çizdiği temaya uygun çubuk (`titleBarStyle:'hidden'` + `titleBarOverlay`, `initDesktopTitleBar` in `src/lib/desktop.ts`, renkler `csn:titlebar` IPC ile); müzik kartı (`MusicPanel`) hep küçük başlar | ✅ Windows'ta denenmedi |
 | Electron masaüstü uygulaması (`desktop/`), kurulum: Actions → "Masaüstü (Windows)" ya da `desktop-v*` etiketi | ✅ 0.1.1 yayında: https://github.com/barishnc-creator/csn/releases/latest (Actions → "Masaüstü (Windows)" elle başlatılınca `desktop/package.json` sürümüyle yeni Release açar; bu ortamdan etiket push'u engelli) |
 
 ## Migrationlar (sırayla uygulandı)
@@ -60,7 +61,7 @@ CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'
 
 ## Sıradaki işler
 - Onaylı revize yok (#17, #20-#23 bitti). Yeni istek için `select * from revisions where status='approved'`.
-- Masaüstü 0.1.2 Release'i: Actions → "Masaüstü (Windows)" (bu oturumda tetiklenmeye çalışıldı; bkz. git log / Releases).
+- Masaüstü 0.1.3 derlemesi bu oturumda tetiklendi; Releases'ta olduğunu doğrula. Kullanıcı canlıda başlık çubuğunu denemeli.
 
 ## Sıradaki adaylar
 - Müzik botu canlıda denenmeli (iki kişiyle: sıra, tekrar, konsol). Bot hesabı `b0700000-0000-4000-8000-00000000b070` (`src/lib/bots.ts`)
