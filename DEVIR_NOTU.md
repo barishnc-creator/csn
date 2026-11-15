@@ -70,6 +70,7 @@ CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'
 - Onaylı revize kalmadı (#26-#29 bitti). Yeni istek gelirse `select * from revisions where status='approved'`.
 
 ## Kullanıcıyla konuşulan, bekleyen
+- Otomatik revize: "CSN onaylı revize denetimi" zamanlanmış görevi (saatte bir, yeni oturum) kuruldu ama **kapalı**: bu oturumdan göreve Supabase bağlantısı eklenemedi. Kullanıcı claude.ai → zamanlanmış görevler'den Supabase bağlantısını + `barishnc-creator/csn` deposunu ekleyip açacak.
 - Uygulama adı değişikliği düşünülüyor (CSN = "couissin"). 10 öneri verildi (Kuzenhane, Cousy, Kuzn, Cuzzo, Tayfa, Cousinverse, Kuzen.io, Cousin Club, Familia, CSN+). Kullanıcı "isme daha sonra karar vereceğim" dedi: **sormadan başlama**. Seçince: `index.html` başlığı, `public/manifest`, `desktop/package.json` productName, sol üst logo harfi, metinler.
 
 ## Sıradaki adaylar
