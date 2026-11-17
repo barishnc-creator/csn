@@ -18,9 +18,8 @@ const VOLUME_KEY = 'csn.soundpad.volume'
 export const SOUND_MAX_BYTES = 1024 * 1024
 export const SOUND_TYPES = ['audio/mpeg', 'audio/mp3', 'audio/ogg', 'audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave']
 const SOUND_EXT = /\.(mp3|ogg|oga|wav)$/i
-const RATE_MS = 1500 // kişi başı en sık
+const RATE_MS = 800 // kişi başı en sık (yeni ses eskisini kestiği için kısa)
 const MAX_LEN_MS = 10_000 // ses en fazla 10 sn
-const MAX_CONCURRENT = 4
 
 export interface SoundpadSnapshot {
   channelId: string | null
@@ -51,6 +50,7 @@ class SoundpadEngine {
   private lastBy = new Map<string, number>()
   private lastSent = 0
   private playing = new Set<HTMLAudioElement>()
+  private playGen = 0 // her yeni ses artırır; geç yüklenen eski ses başlamaz
   private refs = 0
   private teardownTimer = 0
   private listeners = new Set<() => void>()
@@ -149,7 +149,7 @@ class SoundpadEngine {
   send(id: string, userId: string): string | null {
     if (!this.channelId || !this.roomSub) return 'Önce bir ses kanalına katıl'
     const now = Date.now()
-    if (now - this.lastSent < RATE_MS) return 'Biraz yavaş, 1,5 saniyede bir ses'
+    if (now - this.lastSent < RATE_MS) return 'Biraz yavaş'
     this.lastSent = now
     this.roomSub.send({ type: 'broadcast', event: 'play', payload: { id, by: userId } })
     this.lastBy.set(userId, now)
@@ -170,9 +170,13 @@ class SoundpadEngine {
     if (!sound) return
     this.lastPlayed = { id, by, at: Date.now() }
     this.emit()
-    if (this.deafened || this.volume === 0 || this.playing.size >= MAX_CONCURRENT) return
+    // Revize #30: yeni ses çalan sesi keser (aynı anda tek ses)
+    const gen = ++this.playGen
+    this.playing.forEach((a) => a.pause())
+    this.playing.clear()
+    if (this.deafened || this.volume === 0) return
     const url = await signedUrl(sound.path)
-    if (!url) return
+    if (!url || gen !== this.playGen) return
     const audio = new Audio(url)
     audio.volume = this.volume / 100
     const done = () => {

@@ -55,6 +55,7 @@ CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'
 | Revize #29 sürükleyerek taşıma: `move_members` yetkilisi ses kanalındaki kişiyi tutup başka odanın üstüne bırakır (`ChannelSidebar.tsx`, `voice_moves` insert) | ✅ Playwright'ta sürükle-bırak isteği doğrulandı, canlı denenmedi |
 | Soundpad tuş atamaları (kullanıcı isteği): her sese kişiye özel kısayol (tek tuş; istenirse Ctrl/Alt ile, bas-konuş tuşu atanamaz, tek tuşlu kısayol yazı alanında çalmaz), bu cihazda saklanır (`src/voice/soundpadKeys.ts`, `SoundpadHotkeys` Layout'ta); soundpad'de "⌨ Tuş ata", Esc vazgeç, Backspace kaldır; aynı kombinasyon başka sesten kalkar. Masaüstü 0.1.4+ ile CSN arka plandayken de (oyun, başka uygulama) çalışır: `desktop/main.js` `uiohook-napi` ile tuşları engellemeden dinler (`csn:set-hotkeys` / `csn:hotkey` IPC), pencere öndeyken sayfa kendi dinleyicisiyle çalar; tarayıcı/PWA'da yalnız sekme odaktayken | ✅ mantık testleri geçti, arayüz canlı denenmedi |
 | Yayın çerçevesi (kullanıcı isteği): ekran paylaşırken pencere kenarında ince, nefes alan kırmızı çerçeve + üst ortada "● Yayındasın · Durdur" hapı (`LiveFrame.tsx`, Layout'ta `voice.screenOn`); tıklamaları engellemez, masaüstünde başlık çubuğunun altında, azaltılmış harekette animasyonsuz. İzleyende başkasının ekran kutucuğu ince kırmızı kenarlı (`.tile.screen.remote`) | ✅ sahte veriyle ekran görüntüsü, canlı denenmedi |
+| Revize #30 soundpad: yeni ses çalınınca çalan ses kesilir (herkeste; `playGen` ile geç yüklenen eski ses başlamaz), kişi başı sınır 1,5 sn → 0,8 sn (`src/voice/soundpad.ts`) | ✅ derleniyor, canlı denenmedi |
 | Güvenlik denetimi (2026-11-15): tüm tablolarda RLS + koruma tetikleyicileri (mesaj/profil/revize/arkadaşlık/sahip) doğrulandı; depoda gizli anahtar yok; markdown HTML üretmiyor; `npm audit` temiz. Bulgu: Realtime yayın/presence kanalları herkese açıktı → `0021`: `realtime.messages` kuralları (yalnız üyeler; `typing-`/`soundpad-` için kanalı görme izni), istemcide tüm kanallar `private: true` | ✅ kurallar SQL ile test edildi; **Realtime Settings → "Allow public access" henüz açık** (kullanıcı canlı doğrulayınca kapatılacak) |
 | Electron masaüstü uygulaması (`desktop/`), kurulum: Actions → "Masaüstü (Windows)" ya da `desktop-v*` etiketi | ✅ 0.1.4 yayında (soundpad genel kısayolları; derlemede `uiohook-napi` yüklenmesi doğrulanıyor): https://github.com/barishnc-creator/csn/releases/latest (Actions → "Masaüstü (Windows)" elle başlatılınca `desktop/package.json` sürümüyle yeni Release açar; bu ortamdan etiket push'u engelli) |
 
@@ -69,7 +70,7 @@ CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'
 - Bazı migrationlarda (politika silme) Supabase MCP kullanıcıdan onay ister; yanıt gelmezse zaman aşımı olur, kullanıcıya söyle.
 
 ## Sıradaki işler
-- Onaylı revize kalmadı (#26-#29 bitti). Yeni istek gelirse `select * from revisions where status='approved'`.
+- Onaylı revize kalmadı (#26-#30 bitti). Yeni istek gelirse `select * from revisions where status='approved'`.
 
 ## Kullanıcıyla konuşulan, bekleyen
 - Güvenlik: kanallar özel yapıldı; kullanıcı sohbetin canlı aktığını doğrulayınca Supabase → Realtime → Settings → **Allow public access** kapatılacak. Ayrıca Auth → **Leaked password protection** açılması önerildi.
