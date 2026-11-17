@@ -41,6 +41,7 @@ export interface VoiceSettings {
   echoCancellation: boolean
   aiNoise: boolean // RNNoise ile gelişmiş gürültü engelleme
   volumes: Record<string, number> // kullanıcı id → 0..2
+  streamVolumes: Record<string, number> // kullanıcı id → yayın (ekran) sesi 0..2
 }
 
 export interface VoiceParticipant {
@@ -51,6 +52,7 @@ export interface VoiceParticipant {
   micMuted: boolean
   camera?: Track
   screen?: Track
+  screenAudio: boolean // yayının sesi var mı
 }
 
 interface VoiceState {
@@ -71,6 +73,7 @@ interface VoiceState {
   toggleCamera: () => Promise<void>
   toggleScreen: () => Promise<void>
   setVolume: (userId: string, v: number) => void
+  setStreamVolume: (userId: string, v: number) => void
   updateSettings: (patch: Partial<VoiceSettings>) => void
   clearError: () => void
 }
@@ -93,6 +96,7 @@ const defaults: VoiceSettings = {
   echoCancellation: true,
   aiNoise: true,
   volumes: {},
+  streamVolumes: {},
 }
 
 function loadSettings(): VoiceSettings {
@@ -151,9 +155,9 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   }, [settings])
 
   const applyVolume = useCallback((p: RemoteParticipant) => {
-    const v = deafRef.current ? 0 : settingsRef.current.volumes[p.identity] ?? 1
-    p.setVolume(v, Track.Source.Microphone)
-    p.setVolume(v, Track.Source.ScreenShareAudio)
+    const deaf = deafRef.current
+    p.setVolume(deaf ? 0 : settingsRef.current.volumes[p.identity] ?? 1, Track.Source.Microphone)
+    p.setVolume(deaf ? 0 : settingsRef.current.streamVolumes?.[p.identity] ?? 1, Track.Source.ScreenShareAudio)
   }, [])
 
   // Oda olayları → arayüzü yenile
@@ -380,8 +384,17 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
       shareAttempt.current = true
       if (room.state !== ConnectionState.Connected) return
       const preset = SHARE_PRESETS[choice.quality]
+      // Yankı önleme: sistem sesi yakalanırken CSN'nin kendi çaldığı ses (arkadaşların konuşması)
+      // yakalamaya girmesin (restrictOwnAudio; Chrome 141+ ve Electron 45 destekler). Yayın sesi
+      // müzik/oyun olduğu için konuşma işlemleri kapalı.
+      const screenAudio = {
+        restrictOwnAudio: true,
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+      } as MediaTrackConstraints
       const capture: ScreenShareCaptureOptions = {
-        audio: choice.audio,
+        audio: choice.audio ? (screenAudio as ScreenShareCaptureOptions['audio']) : false,
         systemAudio: choice.audio ? 'include' : 'exclude',
         video: { displaySurface: choice.surface },
         selfBrowserSurface: 'exclude',
@@ -429,6 +442,19 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     (userId: string, v: number) => {
       setSettings((s) => {
         const next = { ...s, volumes: { ...s.volumes, [userId]: v } }
+        settingsRef.current = next
+        return next
+      })
+      const p = room.remoteParticipants.get(userId)
+      if (p) applyVolume(p)
+    },
+    [room, applyVolume],
+  )
+
+  const setStreamVolume = useCallback(
+    (userId: string, v: number) => {
+      setSettings((s) => {
+        const next = { ...s, streamVolumes: { ...(s.streamVolumes ?? {}), [userId]: v } }
         settingsRef.current = next
         return next
       })
@@ -502,6 +528,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
       const cam = p.getTrackPublication(Track.Source.Camera)
       const scr = p.getTrackPublication(Track.Source.ScreenShare)
       const mic = p.getTrackPublication(Track.Source.Microphone)
+      const scrAudio = p.getTrackPublication(Track.Source.ScreenShareAudio)
       return {
         id: p.identity,
         name: profiles[p.identity]?.display_name ?? p.name ?? 'Üye',
@@ -510,6 +537,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
         micMuted: !mic || mic.isMuted,
         camera: cam && !cam.isMuted ? cam.track : undefined,
         screen: scr && !scr.isMuted ? scr.track : undefined,
+        screenAudio: !!scrAudio && !scrAudio.isMuted,
       }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -533,6 +561,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     toggleCamera,
     toggleScreen,
     setVolume,
+    setStreamVolume,
     updateSettings,
     clearError: () => setError(null),
   }

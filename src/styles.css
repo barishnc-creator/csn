@@ -1339,3 +1339,7 @@ a { color: var(--accent-2); }
 @keyframes live-dot { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--red) 60%, transparent); } 80%, 100% { box-shadow: 0 0 0 7px transparent; } }
 .desktop-frame .live-pill { top: calc(var(--titlebar-h, 34px) + 8px); }
 @media (prefers-reduced-motion: reduce) { .live-frame, .live-dot { animation: none; } .live-frame { opacity: 0.9; } }
+/* Yayına sağ tık → yayın sesi (kutucuğun içinde, tam ekranda da görünür) */
+.tile .context-menu.stream-menu { position: absolute; width: 230px; cursor: default; z-index: 5; }
+.context-menu.stream-menu > button:hover { background: color-mix(in srgb, var(--accent) 85%, transparent); }
+.stream-menu-note { padding: 0 10px 6px; }

@@ -148,9 +148,39 @@ function VoiceHeader({ channel, onToggleMembers }: { channel: Channel; onToggleM
 
 function TileView({ tile, big, onClick, onTheater, theater }: { tile: Tile; big?: boolean; onClick: () => void; onTheater?: () => void; theater?: boolean }) {
   const { profiles } = useApp()
+  const voice = useVoice()
   const ref = useRef<HTMLVideoElement>(null)
   const box = useRef<HTMLDivElement>(null)
   const p = tile.participant
+  // Yayına sağ tık → yayın sesi ayarı (kutucuğun içinde açılır; tam ekranda da görünür)
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const canAdjust = tile.kind === 'screen' && !p.isLocal
+  const streamVol = voice.settings.streamVolumes?.[p.id] ?? 1
+  const lastVol = useRef(1)
+
+  useEffect(() => {
+    if (!menu) return
+    const onDown = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenu(null)
+    }
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenu(null)
+    window.addEventListener('mousedown', onDown)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('mousedown', onDown)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [menu])
+
+  function openMenu(e: React.MouseEvent) {
+    if (!canAdjust || !box.current) return
+    e.preventDefault()
+    e.stopPropagation()
+    const r = box.current.getBoundingClientRect()
+    const W = 230, H = 130
+    setMenu({ x: Math.max(8, Math.min(e.clientX - r.left, r.width - W - 8)), y: Math.max(8, Math.min(e.clientY - r.top, r.height - H - 8)) })
+  }
 
   useEffect(() => {
     const el = ref.current
@@ -171,6 +201,7 @@ function TileView({ tile, big, onClick, onTheater, theater }: { tile: Tile; big?
       ref={box}
       className={`tile ${tile.kind}${tile.kind === 'screen' && !p.isLocal ? ' remote' : ''}${p.speaking && tile.kind !== 'screen' ? ' speaking' : ''}${big ? ' big' : ''}`}
       onClick={onClick}
+      onContextMenu={openMenu}
     >
       {tile.track ? (
         <video ref={ref} autoPlay playsInline muted className={tile.kind === 'camera' && p.isLocal ? 'mirror' : ''} />
@@ -190,6 +221,28 @@ function TileView({ tile, big, onClick, onTheater, theater }: { tile: Tile; big?
             </button>
           )}
           <button onClick={fullscreen} title="Tam ekran (görev çubuğu dahil)"><Icon name="screen" size={16} /></button>
+        </div>
+      )}
+      {menu && (
+        <div ref={menuRef} className="context-menu stream-menu" style={{ left: menu.x, top: menu.y }} onClick={(e) => e.stopPropagation()} onContextMenu={(e) => e.preventDefault()}>
+          <div className="context-head">
+            <strong>{p.name}</strong>
+            <span className="muted small">yayını</span>
+          </div>
+          <div className="context-label">Yayın sesi · %{Math.round(streamVol * 100)}</div>
+          <input className="context-range" type="range" min={0} max={2} step={0.05} value={streamVol} onChange={(e) => voice.setStreamVolume(p.id, Number(e.target.value))} />
+          {!p.screenAudio && <div className="muted small stream-menu-note">Bu yayında şu an ses yok</div>}
+          <button
+            onClick={() => {
+              if (streamVol > 0) {
+                lastVol.current = streamVol
+                voice.setStreamVolume(p.id, 0)
+              } else voice.setStreamVolume(p.id, lastVol.current || 1)
+            }}
+          >
+            <Icon name={streamVol > 0 ? 'headphonesOff' : 'headphones'} size={16} />
+            {streamVol > 0 ? 'Yayın sesini kapat' : 'Yayın sesini aç'}
+          </button>
         </div>
       )}
     </div>
