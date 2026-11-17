@@ -169,7 +169,7 @@ function TileView({ tile, big, onClick, onTheater, theater }: { tile: Tile; big?
   return (
     <div
       ref={box}
-      className={`tile ${tile.kind}${p.speaking && tile.kind !== 'screen' ? ' speaking' : ''}${big ? ' big' : ''}`}
+      className={`tile ${tile.kind}${tile.kind === 'screen' && !p.isLocal ? ' remote' : ''}${p.speaking && tile.kind !== 'screen' ? ' speaking' : ''}${big ? ' big' : ''}`}
       onClick={onClick}
     >
       {tile.track ? (

@@ -18,6 +18,7 @@ import FriendsView from './FriendsView'
 import UserContextMenu from './UserContextMenu'
 import Icon from './Icon'
 import { SoundpadHotkeys } from './Soundpad'
+import LiveFrame from './LiveFrame'
 
 export default function Layout() {
   const { channels, userId, profiles, me, myStatus, mode, setMode, selectedId, select, can, dmPartner, presence, profileOf, openProfile, reloadNotice, dismissReload } = useApp()
@@ -248,6 +249,7 @@ export default function Layout() {
       {profileOf && <UserProfileModal userId={profileOf} onClose={() => openProfile(null)} onEditProfile={() => { openProfile(null); setSettings('profile') }} />}
 
       <UserContextMenu />
+      {voice.screenOn && <LiveFrame onStop={voice.toggleScreen} />}
       <SoundpadHotkeys />
       {showCall && incoming && callerId && (
         <div className="call-toast">
