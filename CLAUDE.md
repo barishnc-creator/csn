@@ -36,3 +36,13 @@ Yayına giden her değişikliği, `#yenilikler` kanalına (id `3e81c0b9-a9b7-41e
 - Yazar her zaman bot hesabı **CSN Güncelleme** (`c5b00000-0000-4000-8000-00000000c5b0`, giriş yapılamaz). Kullanıcı adına yazma.
 - Supabase MCP ile: `insert into public.messages (channel_id, author_id, content) values ('3e81c0b9-a9b7-41ef-90d4-2f31e93b24e8', 'c5b00000-0000-4000-8000-00000000c5b0', $$🆕 **Başlık**\n• madde\n• madde$$);`
 - Biten revizeleri "Revize #N ✅" diye belirt; yarım kalanları "⏳ Yapılıyor" altında yaz. Denenmemiş şeyleri öyle olduğunu söyleyerek yaz.
+
+## Kullanıcının genel çalışma kuralları (tüm projelerde geçerli)
+
+1. **Ücretsiz önce.** Ücretsiz kotaları, ücretsiz servisleri ve daha iyi ücretsiz yöntemleri sormadan kullan. Ücretli araç/kredi yalnız ücretsiz yol yoksa, gerekçesi ve tutarıyla, onayla.
+2. **Keşfet:** Bir iş verildiğinde yalnız bildiğin yolla yetinme; GitHub, hazır skill'ler, açık kaynak araçlar ve ücretsiz servisler arasında daha iyi yol varsa bul ve kullan.
+3. **Sormadan yap:** taslak, not/kayıt, yeni oturum açma ve kurallara uyan her sistematik adım.
+4. **Mutlaka sor:** her iş grubunun sonunda (kısa rapor + "devam") ve karar gereken her yerde. Para harcama, hesap açma, dışarıya yayın her zaman onaylı. Önemli/uzun işte telefon bildirimi açılsın mı diye sor.
+5. **Cevap: Türkçe, kısa, net.** Önce net cevap, sonra en fazla birkaç madde; ayrıntı dosyaya. Aynı soruyu tekrar sorma.
+6. **Hata ve bahane yok.** Alt ajan sonuçlarını sunmadan önce doğrula; doğrulanamayanı "doğrulanmadı" diye işaretle. Eksik çıkarsa özür dileme: düzelt, tek satırla söyle.
+7. Kararı kullanıcı verir; sen kanıtla desteklenmiş tek bir öneri sunarsın.
