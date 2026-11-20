@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { pendingInvite } from '../lib/invite'
+import { MaintenanceBanner } from '../lib/maintenance'
 
 export default function AuthScreen() {
   const [mode, setMode] = useState<'login' | 'register'>(() => (pendingInvite() ? 'register' : 'login'))
@@ -39,6 +40,7 @@ export default function AuthScreen() {
     <div className="center-screen auth-bg">
       <form className="card auth-card" onSubmit={submit}>
         <div className="auth-logo">CSN</div>
+        <MaintenanceBanner variant="auth" />
         <h1>{mode === 'login' ? 'Tekrar hoş geldin!' : 'Hesap oluştur'}</h1>
         <p className="muted">{mode === 'login' ? 'Ekibin seni bekliyor.' : 'Davet kodunla CSN\'ye katıl.'}</p>
 

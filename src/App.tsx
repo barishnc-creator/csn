@@ -7,6 +7,7 @@ import AuthScreen from './auth/AuthScreen'
 import JoinScreen from './auth/JoinScreen'
 import Layout from './components/Layout'
 import { DialogHost } from './lib/dialog'
+import { MAINTENANCE, MaintenanceBanner } from './lib/maintenance'
 
 type Gate = 'loading' | 'member' | 'not-member'
 
@@ -52,7 +53,14 @@ export default function App() {
   return (
     <AppProvider userId={session.user.id}>
       <VoiceProvider>
-        <Layout />
+        {MAINTENANCE.active ? (
+          <div className="maint-shell">
+            <MaintenanceBanner variant="app" />
+            <Layout />
+          </div>
+        ) : (
+          <Layout />
+        )}
         <DialogHost />
       </VoiceProvider>
     </AppProvider>
