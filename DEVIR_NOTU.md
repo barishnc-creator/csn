@@ -1,7 +1,7 @@
 # CSN — Devir notu
 
 > Yeni bir oturum buradan devam eder. Önce bunu, sonra `CLAUDE.md`'yi oku.
-> Son güncelleme: 2026-11-17 (yayın çerçevesi yayında)
+> Son güncelleme: 2026-11-20 (LiveKit kotası doldu; kendi sunucu hazırlığı)
 
 ## Durum özeti
 CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'e her push'ta `.github/workflows/pages.yml` ile yayınlanır).
@@ -62,6 +62,13 @@ CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'
 
 ## Migrationlar (sırayla uygulandı)
 `0001_init` → `0002_lock_anon_functions` → `0003_owner_and_revisions` → `0004_dm_kind` → `0005_roles_dm_reactions_pins_profile` → `0006_server_reload` → `0007_friendships` → `0008_tag_banner` → `0009_channel_join_roles` → `0010_channels_select_row_based` → `0011_submit_revisions_perm` → `0012_music` → `0013_soundpad` → `0014_server_theme` → `0015_stickers` → `0016_music_bot` → `0017_bot_settings` → `0018_manage_sounds_perm` → `0019_channel_categories` → `0020_voice_limit_move` → `0021_realtime_private`
+
+## ⚠️ Ses durumu (2026-11-20)
+- LiveKit Cloud Build planı doldu (5.024/5.000 dk), ~1 Aralık'ta yenilenir. Bakım duyurusu açık (`src/lib/maintenance.tsx`, `MAINTENANCE.active`).
+- Ücretsiz ikinci LiveKit projesi işe yaramaz: bir hesabın ücretsiz projeleri kotayı paylaşır (docs.livekit.io quotas-and-limits).
+- Cloudflare TURN ücretli (0,05 $/GB): kullanılmadı, LiveKit'in kendi TURN'ü kullanılıyor.
+- Kullanıcı 3. seçeneği seçti: **Oracle A1'de kendi LiveKit sunucusu**. Hazır: `selfhost/livekit/` (README, `kurulum.sh`, `oracle-olustur.sh`). `livekit-token` artık `LIVEKIT_SELF_*` sırları varsa ve sunucu yanıt veriyorsa onu, yoksa Cloud'u kullanıyor; **kodda hazır, yayına alınmadı** (deploy izni otomatik modda reddedildi, kullanıcı onayıyla yapılacak). Kullanıcının yapacakları: README adım 1-4. Bitince: fonksiyonu yayına al, `MAINTENANCE.active=false`, #yenilikler'e yaz.
+- Doğrulananlar: LiveKit v1.13 bu yapılandırmayla açılıyor, Twirp API 200; iptables kuralları REJECT'in önüne ekleniyor ve tekrar çalıştırınca çoğalmıyor; sunucu seçimi (yalnız Cloud / kendi sunucu açık / kapalı) Deno'da test edildi; OCI CLI parametre adları kontrol edildi. **Denenmedi:** gerçek Oracle hesabında uçtan uca, sslip.io sertifikası, canlı ses.
 
 ## Bekleyen karar
 - Masaüstü .exe imzasız: Windows 11 "Akıllı Uygulama Denetimi" açık olan bilgisayarlarda engelleniyor (egunesx'te oldu). Geçici çözüm: PWA olarak yükleme (⚙️ → Uygulama olarak yükle). Kalıcı çözüm seçenekleri (Microsoft Store, ücretsiz bireysel hesap / kod imzalama sertifikası) kullanıcıya sunuldu; **"şimdilik kalsın" dedi**, sormadan başlama.

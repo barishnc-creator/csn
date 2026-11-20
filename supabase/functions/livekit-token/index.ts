@@ -5,6 +5,11 @@
 //   LIVEKIT_URL         wss://<proje>.livekit.cloud
 //   LIVEKIT_API_KEY
 //   LIVEKIT_API_SECRET
+// İsteğe bağlı, kendi sunucumuz (selfhost/livekit/kurulum.sh):
+//   LIVEKIT_SELF_URL    wss://<ip>.sslip.io
+//   LIVEKIT_SELF_KEY
+//   LIVEKIT_SELF_SECRET
+// Üçü de tanımlıysa ve sunucu yanıt veriyorsa o kullanılır; yanıt vermezse LiveKit Cloud'a dönülür.
 // SUPABASE_URL ve sunucu anahtarı Supabase tarafından otomatik verilir.
 // verify_jwt kapalı dağıtılır: oturum aşağıda auth.getUser ile doğrulanır.
 
@@ -28,9 +33,8 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   if (req.method !== 'POST') return json({ error: 'Yalnız POST' }, 405)
 
-  const livekitUrl = Deno.env.get('LIVEKIT_URL')
-  const apiKey = Deno.env.get('LIVEKIT_API_KEY')
-  const apiSecret = Deno.env.get('LIVEKIT_API_SECRET')
+  const server = await pickServer()
+  const { url: livekitUrl, key: apiKey, secret: apiSecret } = server ?? {}
   if (!livekitUrl || !apiKey || !apiSecret) {
     return json({ error: 'Ses sunucusu henüz ayarlanmamış (LiveKit anahtarları eksik).' }, 503)
   }
@@ -127,6 +131,39 @@ Deno.serve(async (req) => {
 
   return json({ token, url: livekitUrl })
 })
+
+type LkServer = { url: string; key: string; secret: string }
+let selfCache: { ok: boolean; at: number } | null = null
+
+/** Kendi sunucumuz tanımlı ve ayaktaysa onu, değilse LiveKit Cloud'u seçer. Sağlık sonucu 30 sn saklanır. */
+async function pickServer(): Promise<LkServer | null> {
+  const self = {
+    url: Deno.env.get('LIVEKIT_SELF_URL') ?? '',
+    key: Deno.env.get('LIVEKIT_SELF_KEY') ?? '',
+    secret: Deno.env.get('LIVEKIT_SELF_SECRET') ?? '',
+  }
+  if (self.url && self.key && self.secret) {
+    if (!selfCache || Date.now() - selfCache.at > 30_000) {
+      let ok = false
+      try {
+        const res = await fetch(self.url.replace(/^ws/, 'http').replace(/\/$/, '') + '/', {
+          signal: AbortSignal.timeout(2500),
+        })
+        ok = res.ok
+      } catch {
+        ok = false
+      }
+      selfCache = { ok, at: Date.now() }
+    }
+    if (selfCache.ok) return self
+  }
+  const cloud = {
+    url: Deno.env.get('LIVEKIT_URL') ?? '',
+    key: Deno.env.get('LIVEKIT_API_KEY') ?? '',
+    secret: Deno.env.get('LIVEKIT_API_SECRET') ?? '',
+  }
+  return cloud.url && cloud.key && cloud.secret ? cloud : null
+}
 
 /** Odadaki kişi sayısı (kendisi hariç). LiveKit'e ulaşılamazsa null: sınır uygulanmaz. */
 async function countParticipants(wsUrl: string, apiKey: string, apiSecret: string, room: string, self: string) {
