@@ -76,7 +76,7 @@ CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'
 ## 🔜 SÜREN İŞ: sesi Cloudflare Realtime SFU'ya taşımak (B planı)
 Kurallar: kart/ödeme YOK; Cloudflare panelde kart isterse dur, kullanıcıya sor.
 
-**1. aşama (yalnız mikrofon) yazıldı ve yayında (22 Kas), canlıda DENENMEDİ** (sırlar yok):
+**1. aşama (yalnız mikrofon) yazıldı ve yayında (21 Kas), canlıda DENENMEDİ** (sırlar yok):
 - `0023_cf_voice` uygulandı: `voice_mode` 4. değer `cf`; `voice_sessions` (kişi → kanal, `pub_session`, `sub_session`, `tracks[]`, `last_seen`; RLS: yalnız `can_view_channel` okur, yazma yok), `voice_beat()` (30 sn'de bir; kendi satırını tazeler + kanaldaki 90 sn içinde taze satırları döndürür), `voice_leave(pub)`.
 - `supabase/functions/cf-voice` v1 dağıtıldı (verify_jwt kapalı, kendi doğrular). İşlemler: `join` (livekit-token ile aynı üyelik/izin/kişi sınırı + 2 Cloudflare oturumu), `publish`, `unpublish`, `pull` (hedef AYNI kanalda ve o izi yayınlıyorsa), `answer`, `close`. İstemci oturum kimliği seçemez.
 - `src/voice/cfVoice.ts` (`CfRoom`): iki RTCPeerConnection (yayın: istemci offer; dinleme: SFU offer → `answer`), işlemler oturum başına sırada, kişi başı ses GainNode, konuşan göstergesi AnalyserNode, RNNoise (`createRnnoiseTrack`), susturma = `track.enabled`, çekme başarısızsa 1,5 sn'de yeniden dener.
