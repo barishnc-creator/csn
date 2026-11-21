@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from 'react'
 import {
+  ConnectionErrorReason,
   ConnectionState,
   LocalParticipant,
   Participant,
@@ -282,25 +283,37 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
       let switched = false
       try {
         // Önce anahtar alınır: oda doluysa ya da izin yoksa mevcut görüşme kopmaz
-        const { data, error } = await supabase.functions.invoke<{ token: string; url: string; error?: string }>(
-          'livekit-token',
-          { body: { channelId: id } },
-        )
-        if (error || !data?.token) {
-          let msg = data?.error ?? error?.message ?? 'Ses sunucusuna bağlanılamadı'
-          const ctx = (error as { context?: Response } | null)?.context
-          if (ctx && typeof ctx.json === 'function') {
-            try {
-              msg = (await ctx.json()).error ?? msg
-            } catch {
-              // yoksay
+        const getToken = async (cloudFailed: boolean) => {
+          const { data, error } = await supabase.functions.invoke<{ token: string; url: string; server?: 'cloud' | 'self'; error?: string }>(
+            'livekit-token',
+            { body: { channelId: id, cloudFailed } },
+          )
+          if (error || !data?.token) {
+            let msg = data?.error ?? error?.message ?? 'Ses sunucusuna bağlanılamadı'
+            const ctx = (error as { context?: Response } | null)?.context
+            if (ctx && typeof ctx.json === 'function') {
+              try {
+                msg = (await ctx.json()).error ?? msg
+              } catch {
+                // yoksay
+              }
             }
+            throw new Error(msg)
           }
-          throw new Error(msg)
+          return data
         }
+        const data = await getToken(false)
         switched = true
         if (room.state !== ConnectionState.Disconnected) await room.disconnect()
-        await room.connect(data.url, data.token)
+        try {
+          await room.connect(data.url, data.token)
+        } catch (e) {
+          // LiveKit Cloud kotası dolmuş ya da Cloud'a ulaşılamıyor: yedek sunucu istenir (sunucu herkesi birlikte geçirir)
+          if (data.server !== 'cloud' || (e as { reason?: unknown }).reason === ConnectionErrorReason.Cancelled) throw e
+          const alt = await getToken(true)
+          if (alt.server !== 'self') throw e
+          await room.connect(alt.url, alt.token)
+        }
         await room.startAudio()
         const s = settingsRef.current
         if (s.speakerId !== 'default') await room.switchActiveDevice('audiooutput', s.speakerId).catch(() => {})

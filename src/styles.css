@@ -1355,3 +1355,21 @@ a { color: var(--accent-2); }
 .maint-shell > .maint-app strong, .maint-shell > .maint-app span { display: inline; }
 .maint-shell > .maint-app strong::after { content: " · "; color: #ffd592; }
 .maint-shell > .app { flex: 1; min-height: 0; height: auto; }
+
+/* Ses sunucusu seçimi (VoiceServerDialog) */
+.voice-server-options { display: flex; flex-direction: column; gap: 8px; margin: 8px 0; }
+.voice-server-option {
+  display: flex; gap: 10px; align-items: flex-start; text-align: left; width: 100%;
+  padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line);
+  background: transparent; color: inherit; cursor: pointer;
+}
+.voice-server-option:hover:not(:disabled) { background: var(--hover); }
+.voice-server-option.active { border-color: var(--accent); background: var(--accent-soft); }
+.voice-server-option strong { display: block; font-size: 14px; }
+.voice-server-option small { display: block; opacity: .7; font-size: 12px; margin-top: 2px; line-height: 1.4; }
+.vs-radio {
+  flex: none; width: 18px; height: 18px; margin-top: 1px; border-radius: 50%;
+  border: 2px solid currentColor; opacity: .7; display: grid; place-items: center;
+}
+.voice-server-option.active .vs-radio { opacity: 1; color: var(--accent); }
+.small-note { font-size: 12px; }

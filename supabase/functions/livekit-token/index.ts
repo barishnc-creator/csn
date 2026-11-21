@@ -9,7 +9,9 @@
 //   LIVEKIT_SELF_URL    wss://<ip>.sslip.io
 //   LIVEKIT_SELF_KEY
 //   LIVEKIT_SELF_SECRET
-// Üçü de tanımlıysa ve sunucu yanıt veriyorsa o kullanılır; yanıt vermezse LiveKit Cloud'a dönülür.
+// Seçim server_state.voice_mode ile (0022): auto = önce Cloud; istemci Cloud'a bağlanamazsa
+// { cloudFailed: true } ile yeniden ister, herkes 3 saatliğine yedeğe geçer (oda bölünmesin diye
+// yedekte o odada kimse varsa yeni gelen de oraya gider). cloud / self = elle sabit.
 // SUPABASE_URL ve sunucu anahtarı Supabase tarafından otomatik verilir.
 // verify_jwt kapalı dağıtılır: oturum aşağıda auth.getUser ile doğrulanır.
 
@@ -32,12 +34,6 @@ function json(body: unknown, status = 200) {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors })
   if (req.method !== 'POST') return json({ error: 'Yalnız POST' }, 405)
-
-  const server = await pickServer()
-  const { url: livekitUrl, key: apiKey, secret: apiSecret } = server ?? {}
-  if (!livekitUrl || !apiKey || !apiSecret) {
-    return json({ error: 'Ses sunucusu henüz ayarlanmamış (LiveKit anahtarları eksik).' }, 503)
-  }
 
   const jwt = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '')
   if (!jwt) return json({ error: 'Giriş gerekli' }, 401)
@@ -63,8 +59,11 @@ Deno.serve(async (req) => {
   const user = userData.user
 
   let channelId: string | undefined
+  let cloudFailed = false
   try {
-    channelId = (await req.json())?.channelId
+    const body = await req.json()
+    channelId = body?.channelId
+    cloudFailed = body?.cloudFailed === true
   } catch {
     // boş gövde
   }
@@ -94,6 +93,10 @@ Deno.serve(async (req) => {
       .from('member_roles').select('role_id').eq('user_id', user.id).in('role_id', channel.join_roles)
     if (!jr?.length) return json({ error: 'Bu ses kanalına bağlanma iznin yok' }, 403)
   }
+
+  const server = await pickServer(admin, channel.id, cloudFailed)
+  if (!server) return json({ error: 'Ses sunucusu henüz ayarlanmamış (LiveKit anahtarları eksik).' }, 503)
+  const { url: livekitUrl, key: apiKey, secret: apiSecret } = server
 
   const now = Math.floor(Date.now() / 1000)
 
@@ -129,40 +132,57 @@ Deno.serve(async (req) => {
     .setExpirationTime(now + 6 * 60 * 60)
     .sign(new TextEncoder().encode(apiSecret))
 
-  return json({ token, url: livekitUrl })
+  return json({ token, url: livekitUrl, server: server.kind })
 })
 
-type LkServer = { url: string; key: string; secret: string }
+type LkServer = { kind: 'cloud' | 'self'; url: string; key: string; secret: string }
 let selfCache: { ok: boolean; at: number } | null = null
+const FALLBACK_MS = 3 * 60 * 60 * 1000
 
-/** Kendi sunucumuz tanımlı ve ayaktaysa onu, değilse LiveKit Cloud'u seçer. Sağlık sonucu 30 sn saklanır. */
-async function pickServer(): Promise<LkServer | null> {
-  const self = {
-    url: Deno.env.get('LIVEKIT_SELF_URL') ?? '',
-    key: Deno.env.get('LIVEKIT_SELF_KEY') ?? '',
-    secret: Deno.env.get('LIVEKIT_SELF_SECRET') ?? '',
-  }
-  if (self.url && self.key && self.secret) {
-    if (!selfCache || Date.now() - selfCache.at > 30_000) {
-      let ok = false
-      try {
-        const res = await fetch(self.url.replace(/^ws/, 'http').replace(/\/$/, '') + '/', {
-          signal: AbortSignal.timeout(2500),
-        })
-        ok = res.ok
-      } catch {
-        ok = false
-      }
-      selfCache = { ok, at: Date.now() }
+function envServer(kind: 'cloud' | 'self'): LkServer | null {
+  const p = kind === 'self' ? ['LIVEKIT_SELF_URL', 'LIVEKIT_SELF_KEY', 'LIVEKIT_SELF_SECRET'] : ['LIVEKIT_URL', 'LIVEKIT_API_KEY', 'LIVEKIT_API_SECRET']
+  const [url, key, secret] = p.map((n) => Deno.env.get(n) ?? '')
+  return url && key && secret ? { kind, url, key, secret } : null
+}
+
+/** Yedek sunucu ayakta mı? Sonuç 30 sn saklanır. */
+async function selfHealthy(s: LkServer) {
+  if (!selfCache || Date.now() - selfCache.at > 30_000) {
+    let ok = false
+    try {
+      const res = await fetch(s.url.replace(/^ws/, 'http').replace(/\/$/, '') + '/', { signal: AbortSignal.timeout(2500) })
+      ok = res.ok
+    } catch {
+      ok = false
     }
-    if (selfCache.ok) return self
+    selfCache = { ok, at: Date.now() }
   }
-  const cloud = {
-    url: Deno.env.get('LIVEKIT_URL') ?? '',
-    key: Deno.env.get('LIVEKIT_API_KEY') ?? '',
-    secret: Deno.env.get('LIVEKIT_API_SECRET') ?? '',
+  return selfCache.ok
+}
+
+// deno-lint-ignore no-explicit-any
+async function pickServer(admin: any, room: string, cloudFailed: boolean): Promise<LkServer | null> {
+  const cloud = envServer('cloud')
+  const selfS = envServer('self')
+  const self = selfS && (await selfHealthy(selfS)) ? selfS : null
+  if (!self) return cloud
+  if (!cloud) return self
+
+  const { data: st } = await admin.from('server_state').select('voice_mode, voice_fallback_until').eq('id', 1).maybeSingle()
+  const mode: string = st?.voice_mode ?? 'auto'
+  if (mode === 'cloud') return cloud
+  if (mode === 'self') return self
+
+  // auto
+  if (cloudFailed) {
+    await admin.from('server_state').update({ voice_fallback_until: new Date(Date.now() + FALLBACK_MS).toISOString() }).eq('id', 1)
+    return self
   }
-  return cloud.url && cloud.key && cloud.secret ? cloud : null
+  const until = st?.voice_fallback_until ? Date.parse(st.voice_fallback_until) : 0
+  if (until > Date.now()) return self
+  // Yedek süresi bitti ama odada hâlâ yedekte konuşanlar varsa onlardan ayırma
+  const inSelf = await countParticipants(self.url, self.key, self.secret, room, '')
+  return inSelf && inSelf > 0 ? self : cloud
 }
 
 /** Odadaki kişi sayısı (kendisi hariç). LiveKit'e ulaşılamazsa null: sınır uygulanmaz. */

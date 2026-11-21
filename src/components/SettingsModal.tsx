@@ -10,6 +10,7 @@ import { useVoice } from '../voice/VoiceContext'
 import Avatar from './Avatar'
 import Icon, { type IconName } from './Icon'
 import RevisionsTab from './RevisionsTab'
+import VoiceServerDialog from './VoiceServerDialog'
 import ReloadDialog from './ReloadDialog'
 import { canInstall, isStandalone, onInstallChange, promptInstall } from '../lib/install'
 import { inviteLink } from '../lib/invite'
@@ -36,6 +37,7 @@ const tabMeta: Record<SettingsTab, { label: string; icon: IconName; group: strin
 export default function SettingsModal({ initialTab, onClose }: { initialTab: SettingsTab; onClose: () => void }) {
   const { myRole, can, isOwner } = useApp()
   const [reloadOpen, setReloadOpen] = useState(false)
+  const [voiceServerOpen, setVoiceServerOpen] = useState(false)
   const [installable, setInstallable] = useState(canInstall())
   useEffect(() => {
     const off = onInstallChange(() => setInstallable(canInstall()))
@@ -99,6 +101,11 @@ export default function SettingsModal({ initialTab, onClose }: { initialTab: Set
                   <Icon name="refresh" size={16} /> Herkesi yenile
                 </button>
               )}
+              {isOwner && (
+                <button className="accent" onClick={() => setVoiceServerOpen(true)}>
+                  <Icon name="speaker" size={16} /> Ses sunucusu
+                </button>
+              )}
               {installable && !isStandalone() && (
                 <button className="accent" onClick={() => promptInstall()}>
                   <Icon name="download" size={16} /> Uygulama olarak yükle
@@ -132,6 +139,7 @@ export default function SettingsModal({ initialTab, onClose }: { initialTab: Set
         </section>
       </div>
       {reloadOpen && <ReloadDialog onClose={() => setReloadOpen(false)} />}
+      {voiceServerOpen && <VoiceServerDialog onClose={() => setVoiceServerOpen(false)} />}
     </div>
   )
 }

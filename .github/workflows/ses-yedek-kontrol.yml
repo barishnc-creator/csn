@@ -1,0 +1,28 @@
+name: Yedek ses sunucusu kontrolü
+# Günde bir kez Oracle'daki kendi LiveKit sunucumuzun ayakta olduğuna bakar.
+# Sunucu yanıt vermezse iş başarısız olur ve GitHub bunu e-postayla bildirir.
+# Adres: selfhost/livekit/host.txt (ör. 1-2-3-4.sslip.io). Dosya yoksa kontrol atlanır.
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  kontrol:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: selfhost/livekit
+      - name: Sunucu yanıt veriyor mu?
+        run: |
+          f=selfhost/livekit/host.txt
+          if [ ! -s "$f" ]; then echo "host.txt yok, kontrol atlandı"; exit 0; fi
+          host=$(tr -d ' \n\r' < "$f")
+          for i in 1 2 3; do
+            if curl -fsS -m 15 "https://$host/" | grep -q OK; then echo "✅ $host ayakta"; exit 0; fi
+            sleep 30
+          done
+          echo "::error::$host yanıt vermiyor. Oracle makinesi kapanmış ya da geri alınmış olabilir (README: Bakım)."
+          exit 1

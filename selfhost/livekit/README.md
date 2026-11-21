@@ -4,7 +4,11 @@ LiveKit Cloud'un ücretsiz planındaki 5.000 dk/ay sınırına takılmamak için
 Oracle Always Free (A1: 4 çekirdek ARM, 24 GB RAM, aylık 10 TB çıkış) + LiveKit (açık kaynak) + sslip.io (alan adı) + Let's Encrypt (HTTPS).
 
 ## Nasıl çalışır
-- `livekit-token` Edge Function `LIVEKIT_SELF_*` sırlarını görürse ve sunucu yanıt veriyorsa **kendi sunucumuzu**, yoksa **LiveKit Cloud**'u kullanır. Geri dönmek için 3 sırrı silmek yeter.
+- **Önce LiveKit Cloud, sorun olursa yedek sunucu.** `livekit-token` (Ayarlar → Ses sunucusu, yalnız sahip):
+  - **Otomatik** (varsayılan): Cloud kullanılır. Biri Cloud'a bağlanamazsa (kota bitti, Cloud çöktü) uygulama yeniden ister, fonksiyon herkesi **3 saatliğine** yedeğe geçirir. Süre bitince Cloud yeniden denenir. Yedekte o odada konuşan varsa yeni gelen de oraya gider, oda bölünmez.
+  - **Hep Cloud** / **Hep yedek**: elle sabit. Yedek ayakta değilse her durumda Cloud kullanılır.
+- Yedeği tamamen devre dışı bırakmak için Supabase'deki 3 `LIVEKIT_SELF_*` sırrını silmek yeter.
+- **Günlük kontrol:** `.github/workflows/ses-yedek-kontrol.yml` her sabah `host.txt`'teki adrese bakar. Yanıt yoksa iş başarısız olur, GitHub e-posta atar.
 - Sunucuda: LiveKit + Redis + Caddy (Docker). TURN, LiveKit'in kendi içindeki sunucu (UDP 3478). Kısıtlı ağlarda ICE/TCP 7881'e düşer.
 
 ## Adımlar
@@ -32,4 +36,5 @@ Oracle'da ayrıca VCN → Security List'te giriş kuralları gerekir: TCP 22, 80
 ## Bakım
 - Durum: `cd /opt/csn-livekit && sudo docker compose ps` · Kayıtlar: `sudo docker compose logs -f livekit`
 - Güncelleme: `sudo docker compose pull && sudo docker compose up -d`
+- **Oracle makineyi geri alırsa** (uzun süre boşta kalan ücretsiz makineler geri alınabilir): Cloud Shell'de 2. adımdaki komutu tekrar çalıştır, sonra yeni IP ile `host.txt` ve 3 sırrı güncelle.
 - Anahtarlar `/opt/csn-livekit/keys.env` dosyasında (yalnız root okur). Depoya asla yazılmaz.
