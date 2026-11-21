@@ -22,6 +22,9 @@ import { playSound } from './sounds'
 import { RnnoiseProcessor } from './rnnoise'
 import ScreenSharePicker, { type ShareChoice, type ShareQuality } from './ScreenSharePicker'
 import { getDesktop } from '../lib/desktop'
+import { CfRoom } from './cfVoice'
+
+const CF_NO_VIDEO = 'Cloudflare ses sunucusunda kamera ve ekran paylaşımı henüz yok (yakında).'
 
 // Ekran paylaşımı kalite profilleri (LiveKit'te hazır 1080p60 profili yok, elle tanımlı)
 const SHARE_PRESETS: Record<ShareQuality, VideoPreset> = {
@@ -115,7 +118,7 @@ function isTyping(e: KeyboardEvent) {
 }
 
 export function VoiceProvider({ children }: { children: ReactNode }) {
-  const { updatePresence, profiles } = useApp()
+  const { updatePresence, profiles, presence, userId: myId } = useApp()
   const [room] = useState(
     () =>
       new Room({
@@ -139,6 +142,9 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   const [pttActive, setPttActive] = useState(false)
   const [settings, setSettings] = useState<VoiceSettings>(loadSettings)
   const [version, bump] = useReducer((x: number) => x + 1, 0)
+  // İkinci arka uç: Cloudflare Realtime (server_state.voice_mode = 'cf'). LiveKit yolu aynen durur.
+  const [cf] = useState(() => new CfRoom())
+  const cfOn = useRef(false) // şu anki görüşme Cloudflare üzerinden mi
 
   const shareAttempt = useRef(false)
   const audioHost = useRef<HTMLDivElement | null>(null)
@@ -213,6 +219,22 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     }
   }, [room, applyVolume])
 
+  // Cloudflare arka ucunun olayları
+  useEffect(() => {
+    cf.onChange = bump
+    cf.onPeerJoin = () => playSound('join')
+    cf.onPeerLeave = () => playSound('leave')
+    cf.onError = (m) => setError(m)
+    cf.onDisconnected = (m) => {
+      cfOn.current = false
+      setError(m)
+      setChannelId(null)
+      updatePresence({ voice_channel_id: null, streaming: false })
+      bump()
+    }
+    return () => cf.disconnect()
+  }, [cf, updatePresence])
+
   const micShouldBeOn = useCallback(
     (m: boolean, ptt: boolean) => !m && (settingsRef.current.inputMode === 'vad' || ptt),
     [],
@@ -250,6 +272,10 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
 
   const syncMic = useCallback(
     async (m: boolean, ptt: boolean) => {
+      if (cfOn.current) {
+        await cf.setMic(micShouldBeOn(m, ptt))
+        return
+      }
       if (room.state !== ConnectionState.Connected) return
       const s = settingsRef.current
       try {
@@ -265,15 +291,17 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
       await applyNoiseProcessor()
       bump()
     },
-    [room, micShouldBeOn, applyNoiseProcessor],
+    [room, cf, micShouldBeOn, applyNoiseProcessor],
   )
 
   const leave = useCallback(() => {
-    if (room.state !== ConnectionState.Disconnected) playSound('leave')
+    if (room.state !== ConnectionState.Disconnected || cf.connected) playSound('leave')
     room.disconnect()
+    cf.disconnect()
+    cfOn.current = false
     setChannelId(null)
     updatePresence({ voice_channel_id: null, streaming: false })
-  }, [room, updatePresence])
+  }, [room, cf, updatePresence])
 
   const join = useCallback(
     async (id: string) => {
@@ -302,8 +330,29 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
           }
           return data
         }
+        // Sahip ses sunucusu olarak Cloudflare'i seçtiyse (Ayarlar → Ses sunucusu) o arka uç kullanılır
+        const { data: st } = await supabase.from('server_state').select('voice_mode').maybeSingle()
+        if (st?.voice_mode === 'cf') {
+          const s = settingsRef.current
+          await cf.connect(
+            id,
+            myId,
+            { settings: s, micOn: micShouldBeOn(muted, false), deafened, volumes: s.volumes },
+            async () => {
+              switched = true
+              if (room.state !== ConnectionState.Disconnected) await room.disconnect()
+            },
+          )
+          cfOn.current = true
+          setChannelId(id)
+          playSound('join')
+          updatePresence({ voice_channel_id: id, muted, deafened, streaming: false })
+          return
+        }
         const data = await getToken(false)
         switched = true
+        if (cf.connected) cf.disconnect()
+        cfOn.current = false
         if (room.state !== ConnectionState.Disconnected) await room.disconnect()
         try {
           await room.connect(data.url, data.token)
@@ -325,6 +374,8 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
         setError((e as Error).message)
         if (switched) {
           room.disconnect()
+          cf.disconnect()
+          cfOn.current = false
           setChannelId(null)
           updatePresence({ voice_channel_id: null, streaming: false })
         }
@@ -333,7 +384,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
         bump()
       }
     },
-    [room, channelId, connecting, muted, deafened, syncMic, updatePresence],
+    [room, cf, myId, channelId, connecting, muted, deafened, syncMic, micShouldBeOn, updatePresence],
   )
 
   const toggleMute = useCallback(() => {
@@ -343,26 +394,29 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
       setDeafened(false)
       deafRef.current = false
       room.remoteParticipants.forEach(applyVolume)
+      cf.setDeafened(false)
     }
     setMuted(next)
     playSound(next ? 'mute' : 'unmute')
     syncMic(next, pttActive)
     updatePresence({ muted: next, deafened: !next ? false : deafened })
-  }, [muted, deafened, pttActive, room, applyVolume, syncMic, updatePresence])
+  }, [muted, deafened, pttActive, room, cf, applyVolume, syncMic, updatePresence])
 
   const toggleDeafen = useCallback(() => {
     const next = !deafened
     setDeafened(next)
     deafRef.current = next
     room.remoteParticipants.forEach(applyVolume)
+    cf.setDeafened(next)
     const nextMuted = next ? true : false
     setMuted(nextMuted)
     playSound(next ? 'mute' : 'unmute')
     syncMic(nextMuted, pttActive)
     updatePresence({ deafened: next, muted: nextMuted })
-  }, [deafened, pttActive, room, applyVolume, syncMic, updatePresence])
+  }, [deafened, pttActive, room, cf, applyVolume, syncMic, updatePresence])
 
   const toggleCamera = useCallback(async () => {
+    if (cfOn.current) return setError(CF_NO_VIDEO)
     if (room.state !== ConnectionState.Connected) return
     const on = room.localParticipant.isCameraEnabled
     try {
@@ -377,6 +431,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
 
   // Açmak: önce uygulama içi seçim penceresi. Kapatmak: anında.
   const toggleScreen = useCallback(async () => {
+    if (cfOn.current) return setError(CF_NO_VIDEO)
     if (room.state !== ConnectionState.Connected) return
     if (room.localParticipant.isScreenShareEnabled) {
       try {
@@ -456,12 +511,13 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
       setSettings((s) => {
         const next = { ...s, volumes: { ...s.volumes, [userId]: v } }
         settingsRef.current = next
+        cf.setVolumes(next.volumes)
         return next
       })
       const p = room.remoteParticipants.get(userId)
       if (p) applyVolume(p)
     },
-    [room, applyVolume],
+    [room, cf, applyVolume],
   )
 
   const setStreamVolume = useCallback(
@@ -484,6 +540,11 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
         settingsRef.current = next
         return next
       })
+      if (cfOn.current) {
+        cf.updateSettings({ ...settingsRef.current, ...patch })
+        if (patch.inputMode) syncMic(muted, false)
+        return
+      }
       if (room.state !== ConnectionState.Connected) return
       if (patch.micId) room.switchActiveDevice('audioinput', patch.micId).catch(() => {})
       if (patch.speakerId) room.switchActiveDevice('audiooutput', patch.speakerId).catch(() => {})
@@ -500,7 +561,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
         applyNoiseProcessor()
       }
     },
-    [room, muted, syncMic, applyNoiseProcessor],
+    [room, cf, muted, syncMic, applyNoiseProcessor],
   )
 
   // Bas-konuş
@@ -536,6 +597,27 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   // Katılımcı listesi
   const participants = useMemo<VoiceParticipant[]>(() => {
     if (!channelId) return []
+    if (cfOn.current) {
+      const me: VoiceParticipant = {
+        id: myId,
+        name: profiles[myId]?.display_name ?? 'Üye',
+        isLocal: true,
+        speaking: cf.localSpeaking,
+        micMuted: !cf.micOn,
+        screenAudio: false,
+      }
+      return [
+        me,
+        ...cf.peers().map((p) => ({
+          id: p.id,
+          name: profiles[p.id]?.display_name ?? 'Üye',
+          isLocal: false,
+          speaking: p.speaking,
+          micMuted: !p.hasMic || !!presence[p.id]?.muted,
+          screenAudio: false,
+        })),
+      ]
+    }
     const all: Participant[] = [room.localParticipant, ...room.remoteParticipants.values()]
     return all.map((p) => {
       const cam = p.getTrackPublication(Track.Source.Camera)
@@ -554,7 +636,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
       }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [version, channelId, room, profiles])
+  }, [version, channelId, room, cf, myId, presence, profiles])
 
   const value: VoiceState = {
     channelId,
@@ -563,8 +645,8 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     participants,
     muted,
     deafened,
-    cameraOn: channelId ? room.localParticipant.isCameraEnabled : false,
-    screenOn: channelId ? room.localParticipant.isScreenShareEnabled : false,
+    cameraOn: channelId && !cfOn.current ? room.localParticipant.isCameraEnabled : false,
+    screenOn: channelId && !cfOn.current ? room.localParticipant.isScreenShareEnabled : false,
     pttActive,
     settings,
     join,

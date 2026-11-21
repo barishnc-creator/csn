@@ -107,3 +107,15 @@ export class RnnoiseProcessor implements TrackProcessor<Track.Kind.Audio, AudioP
     this.dest = null
   }
 }
+
+/**
+ * LiveKit'ten bağımsız kullanım (Cloudflare arka ucu): mikrofon izini RNNoise'tan geçirip
+ * gönderilecek yeni bir iz döndürür. `destroy` işlenmiş izi ve ses bağlamını kapatır;
+ * ham mikrofon izini çağıran durdurur.
+ */
+export async function createRnnoiseTrack(raw: MediaStreamTrack): Promise<{ track: MediaStreamTrack; destroy: () => void }> {
+  const p = new RnnoiseProcessor()
+  await p.init({ track: raw, kind: Track.Kind.Audio } as unknown as AudioProcessorOptions)
+  if (!p.processedTrack) throw new Error('RNNoise çıkış izi oluşturulamadı')
+  return { track: p.processedTrack, destroy: () => void p.destroy() }
+}

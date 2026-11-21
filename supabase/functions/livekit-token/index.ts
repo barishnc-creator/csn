@@ -94,6 +94,10 @@ Deno.serve(async (req) => {
     if (!jr?.length) return json({ error: 'Bu ses kanalına bağlanma iznin yok' }, 403)
   }
 
+  // Ses Cloudflare'e alınmışsa (voice_mode = 'cf') eski sürümü açık kalan istemci LiveKit'e girip odayı bölmesin
+  const { data: vm } = await admin.from('server_state').select('voice_mode').eq('id', 1).maybeSingle()
+  if (vm?.voice_mode === 'cf') return json({ error: 'Ses sunucusu değişti. Sayfayı yenileyip yeniden dene.' }, 409)
+
   const server = await pickServer(admin, channel.id, cloudFailed)
   if (!server) return json({ error: 'Ses sunucusu henüz ayarlanmamış (LiveKit anahtarları eksik).' }, 503)
   const { url: livekitUrl, key: apiKey, secret: apiSecret } = server

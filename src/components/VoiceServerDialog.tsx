@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import Icon from './Icon'
 
-type Mode = 'auto' | 'cloud' | 'self'
+type Mode = 'auto' | 'cloud' | 'self' | 'cf'
 
 const options: { id: Mode; title: string; text: string }[] = [
   { id: 'auto', title: 'Otomatik (önerilen)', text: 'LiveKit Cloud kullanılır. Kota biterse ya da Cloud\'a bağlanılamazsa herkes birlikte yedek sunucuya geçer; 3 saatte bir Cloud yeniden denenir.' },
   { id: 'cloud', title: 'Hep LiveKit Cloud', text: 'Yedek sunucu hiç kullanılmaz.' },
+  { id: 'cf', title: 'Cloudflare (deneme)', text: 'Cloudflare Realtime: ayda 1.000 GB ücretsiz, dakika sınırı yok. Şimdilik yalnız mikrofon sesi; kamera ve ekran paylaşımı yakında. Seçmeden önce herkes sayfayı yenilemiş olmalı.' },
   { id: 'self', title: 'Hep yedek sunucu', text: 'Oracle\'daki kendi sunucumuz. Ayakta değilse Cloud\'a dönülür.' },
 ]
 
