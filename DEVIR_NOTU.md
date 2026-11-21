@@ -1,7 +1,7 @@
 # CSN — Devir notu
 
 > Yeni bir oturum buradan devam eder. Önce bunu, sonra `CLAUDE.md`'yi oku.
-> Son güncelleme: 2026-11-20 (LiveKit kotası doldu; kendi sunucu hazırlığı)
+> Son güncelleme: 2026-11-21 (Cloudflare Realtime 1. aşama: mikrofon sesi yazıldı, canlı deneme bekliyor)
 
 ## Durum özeti
 CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'e her push'ta `.github/workflows/pages.yml` ile yayınlanır).
@@ -61,7 +61,7 @@ CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'
 | Electron masaüstü uygulaması (`desktop/`), kurulum: Actions → "Masaüstü (Windows)" ya da `desktop-v*` etiketi | ✅ 0.1.4 yayında (soundpad genel kısayolları; derlemede `uiohook-napi` yüklenmesi doğrulanıyor): https://github.com/barishnc-creator/csn/releases/latest (Actions → "Masaüstü (Windows)" elle başlatılınca `desktop/package.json` sürümüyle yeni Release açar; bu ortamdan etiket push'u engelli) |
 
 ## Migrationlar (sırayla uygulandı)
-`0001_init` → `0002_lock_anon_functions` → `0003_owner_and_revisions` → `0004_dm_kind` → `0005_roles_dm_reactions_pins_profile` → `0006_server_reload` → `0007_friendships` → `0008_tag_banner` → `0009_channel_join_roles` → `0010_channels_select_row_based` → `0011_submit_revisions_perm` → `0012_music` → `0013_soundpad` → `0014_server_theme` → `0015_stickers` → `0016_music_bot` → `0017_bot_settings` → `0018_manage_sounds_perm` → `0019_channel_categories` → `0020_voice_limit_move` → `0021_realtime_private` → `0022_voice_server_mode`
+`0001_init` → `0002_lock_anon_functions` → `0003_owner_and_revisions` → `0004_dm_kind` → `0005_roles_dm_reactions_pins_profile` → `0006_server_reload` → `0007_friendships` → `0008_tag_banner` → `0009_channel_join_roles` → `0010_channels_select_row_based` → `0011_submit_revisions_perm` → `0012_music` → `0013_soundpad` → `0014_server_theme` → `0015_stickers` → `0016_music_bot` → `0017_bot_settings` → `0018_manage_sounds_perm` → `0019_channel_categories` → `0020_voice_limit_move` → `0021_realtime_private` → `0022_voice_server_mode` → `0023_cf_voice`
 
 ## ⚠️ Ses durumu (2026-11-20)
 - LiveKit Cloud Build planı doldu (5.024/5.000 dk), ~1 Aralık'ta yenilenir. Bakım duyurusu açık (`src/lib/maintenance.tsx`, `MAINTENANCE.active`).
@@ -73,22 +73,26 @@ CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'
 
 - **Araştırma (21 Kas, "ücretsiz + sınırsız" hedefi):** Cloudflare Realtime **SFU + TURN ayda 1.000 GB ücretsiz** (ortak kota, sonrası 0,05 $/GB; ürün sayfası "no credit card required" diyor: panelde doğrulanmadı). Önceki "Cloudflare TURN ücretli" notu YANLIŞTI. 1.000 GB ≈ 70.000+ dinleyici-saat ses ya da ~900 izleyici-saat 1080p yayın; LiveKit Cloud 5.000 dk = 83 kişi-saat. Seçenekler kullanıcıya sunuldu: (A) Oracle'da LiveKit (kod değişmez, makine gücü/kapasite sorunu), (B) ses katmanını Cloudflare Realtime SFU'ya taşımak (büyük yeniden yazım: `VoiceContext.tsx` livekit-client'a bağlı; oda/katılımcı/konuşan bilgisi Supabase presence + kendi kodumuz). **Kullanıcı B'yi seçti (21 Kas): aşamalı geçiş.**
 
-## 🔜 SIRADAKİ İŞ: sesi Cloudflare Realtime SFU'ya taşımak (B planı)
-Kullanıcı onayladı. Henüz kod yazılmadı. Kurallar: kart/ödeme YOK; Cloudflare panelde kart isterse dur, kullanıcıya sor.
+## 🔜 SÜREN İŞ: sesi Cloudflare Realtime SFU'ya taşımak (B planı)
+Kurallar: kart/ödeme YOK; Cloudflare panelde kart isterse dur, kullanıcıya sor.
 
-**Aşamalar**
-1. (Kullanıcı, bu akşam ~17:00) Oracle AMD makinesi + `LIVEKIT_SELF_*` sırları → ses yedekle geri gelir. Adresi (`…sslip.io`) yazınca `selfhost/livekit/host.txt`'e koy, canlı test, `MAINTENANCE.active=false`, #yenilikler.
-2. (Kullanıcı) Ücretsiz Cloudflare hesabı → Realtime → SFU uygulaması oluştur → Supabase sırlarına `CF_REALTIME_APP_ID`, `CF_REALTIME_APP_TOKEN` (değerler sohbete yazılmaz). Henüz istenmedi/yapılmadı: kısa adımlarla iste.
-3. Cloudflare'i `voice_mode`'a 4. seçenek (`cf`) olarak ekle; önce yalnız mikrofon sesi, sonra kamera + ekran (+ ekran sesi). LiveKit yolu olduğu gibi kalır (yedek).
-4. Kullanıcı canlı deneyip onaylayınca varsayılan `cf` olur.
+**1. aşama (yalnız mikrofon) yazıldı ve yayında (22 Kas), canlıda DENENMEDİ** (sırlar yok):
+- `0023_cf_voice` uygulandı: `voice_mode` 4. değer `cf`; `voice_sessions` (kişi → kanal, `pub_session`, `sub_session`, `tracks[]`, `last_seen`; RLS: yalnız `can_view_channel` okur, yazma yok), `voice_beat()` (30 sn'de bir; kendi satırını tazeler + kanaldaki 90 sn içinde taze satırları döndürür), `voice_leave(pub)`.
+- `supabase/functions/cf-voice` v1 dağıtıldı (verify_jwt kapalı, kendi doğrular). İşlemler: `join` (livekit-token ile aynı üyelik/izin/kişi sınırı + 2 Cloudflare oturumu), `publish`, `unpublish`, `pull` (hedef AYNI kanalda ve o izi yayınlıyorsa), `answer`, `close`. İstemci oturum kimliği seçemez.
+- `src/voice/cfVoice.ts` (`CfRoom`): iki RTCPeerConnection (yayın: istemci offer; dinleme: SFU offer → `answer`), işlemler oturum başına sırada, kişi başı ses GainNode, konuşan göstergesi AnalyserNode, RNNoise (`createRnnoiseTrack`), susturma = `track.enabled`, çekme başarısızsa 1,5 sn'de yeniden dener.
+- `VoiceContext.tsx`: girişte `server_state.voice_mode` okunur; `cf` ise `CfRoom`, değilse LiveKit (değişmedi). Cloudflare'de kamera/ekran düğmeleri "henüz yok" uyarısı verir.
+- Ayarlar → Ses sunucusu → **Cloudflare (deneme)**.
+- Doğrulananlar: `npm run build`, `deno check`, cf-voice 22 senaryo sahte Supabase + sahte Cloudflare ile (izinler, oda dolu, başka kanaldan iz çekememe, oturum yönlendirme). **Doğrulanmadı:** gerçek Cloudflare ile ses, RLS SQL testi (MCP onay istedi, zaman aşımı), Chrome'da Web Audio ile yankı engelleme, hoparlör seçimi (`AudioContext.setSinkId`).
+- Belge kaynağı: bu ortamdan developers.cloudflare.com kapalı; `github.com/cloudflare/cloudflare-docs` deposundan okundu (`src/content/docs/realtime/sfu/`, OpenAPI `public/realtime/static/realtime-api-2024-05-21.yaml`).
 
-**Tasarım (öneri, doğrula)**
-- Cloudflare API (`https://rtc.live.cloudflare.com/v1/apps/{appId}/…`, Bearer = uygulama gizli anahtarı): `sessions/new`, `sessions/{id}/tracks/new` (yerel iz: SDP offer + `{location:'local', mid, trackName}`; uzak iz: `{location:'remote', sessionId, trackName}` → yeniden pazarlık `renegotiate`), `tracks/close`. Oda kavramı YOK. Belgeleri güncel sürümden oku (developers.cloudflare.com/realtime/sfu), ezberden yazma.
-- Gizli anahtar istemciye verilemez → yeni Edge Function `cf-voice`: `livekit-token`'daki üyelik/kanal izni/kişi sınırı denetimlerinin aynısı + Cloudflare çağrılarını vekil olarak yapar. Ortak denetimi tek yardımcıya çıkar.
-- Oda durumu (kim içeride, sessionId, iz adları, susturma, yayın): Supabase Realtime presence, özel kanal (`0021` kuralları gibi yalnız kanalı görebilenler) ya da RLS'li `voice_sessions` tablosu. Güvenlik: başkasının izine abone olma isteğinde `cf-voice` o oturumun aynı kanalda olduğunu doğrulamalı.
-- İstemci: `VoiceContext.tsx` (589 satır) doğrudan livekit-client'a bağlı; `VoiceView.tsx` ve `SettingsModal.tsx` LiveKit `Track`/`Room` tipi kullanıyor, `rnnoise.ts` LiveKit `TrackProcessor`. Öneri: `VoiceParticipant.camera/screen`'i `MediaStreamTrack` tabanlı ortak tipe çevir, iki arka uç (`livekit`, `cf`) aynı `VoiceState` arayüzünü doldursun. Konuşan göstergesi: istemcide AnalyserNode. Kişi başı ses/yayın sesi: GainNode (webAudioMix'teki gibi). RNNoise: AudioWorklet çıkışını doğrudan yayınla.
-- Taşınacak özellikler: bas-konuş, sağırlaştır, cihaz seçimi, kamera, ekran paylaşımı (kalite profilleri, `restrictOwnAudio`), yayın sesi, oda kişi sınırı, taşıma (`voice_moves`), DM araması, soundpad/müzik (bunlar Supabase broadcast, etkilenmez), presence (`voice_channel_id`).
-- Test: bu ortamdan supabase.co'ya ve büyük olasılıkla rtc.live.cloudflare.com'a erişim yok; gerekirse ortam ağ iznine `rtc.live.cloudflare.com` eklenmesini iste. Chromium sahte medya (`--use-fake-device-for-media-stream`) ile iki sekmeli Playwright testi yaz. Canlı doğrulama kullanıcıyla.
+**Eksikler / sıradakiler**
+1. (Kullanıcı) Cloudflare hesabı → Realtime → Serverless SFU → uygulama oluştur → Supabase Edge Function sırları `CF_REALTIME_APP_ID`, `CF_REALTIME_APP_TOKEN` (App Secret). Adımlar kullanıcıya verildi. Kart istenirse dur.
+2. Sırlar gelince: sahip Ayarlar → Ses sunucusu → Cloudflare seçer, iki kişiyle canlı deneme. Hata olursa `query_logs` ile cf-voice günlüklerine bak.
+3. `livekit-token`'a "mod cf iken 409" koruması depoda var ama DAĞITILMADI (yayındaki v10). Cloudflare varsayılan olmadan önce dağıt.
+4. 2. aşama: kamera + ekran (+ ekran sesi). `VoiceParticipant.camera/screen` LiveKit `Track` tipinde; `MediaStreamTrack` tabanlı ortak tipe çevir (`VoiceView.tsx`, `SettingsModal.tsx`). Sunucu tarafı hazır (iz adları `cam`, `screen`, `screen-audio`; `unpublish`).
+5. Bilinen sınırlar: yalnız STUN (UDP kapalı ağlarda bağlanamayabilir; Cloudflare TURN ayrı anahtar ister, aynı 1.000 GB kotadan); bağlantı koparsa otomatik yeniden bağlanma yok (uyarı verip odadan düşer); bas-konuşta ilk basışta mikrofon izni/yayın ~1 sn gecikir; sekmesi kapanan kişi 90 sn listede kalabilir; DTX kapalı.
+6. Oracle yedek: kullanıcı makineyi açıp `LIVEKIT_SELF_*` sırlarını ekleyince adresi `selfhost/livekit/host.txt`'e yaz, canlı test, `MAINTENANCE.active=false`, #yenilikler.
+7. #yenilikler'e bu aşamanın duyurusu YAZILMADI (MCP SQL zaman aşımı): yaz.
 
 ## Bekleyen karar
 - Masaüstü .exe imzasız: Windows 11 "Akıllı Uygulama Denetimi" açık olan bilgisayarlarda engelleniyor (egunesx'te oldu). Geçici çözüm: PWA olarak yükleme (⚙️ → Uygulama olarak yükle). Kalıcı çözüm seçenekleri (Microsoft Store, ücretsiz bireysel hesap / kod imzalama sertifikası) kullanıcıya sunuldu; **"şimdilik kalsın" dedi**, sormadan başlama.
