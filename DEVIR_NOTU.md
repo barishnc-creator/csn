@@ -1,7 +1,7 @@
 # CSN — Devir notu
 
 > Yeni bir oturum buradan devam eder. Önce bunu, sonra `CLAUDE.md`'yi oku.
-> Son güncelleme: 2026-11-22 (Cloudflare Realtime 1. aşama canlıda çalışıyor; sıradaki kamera + ekran)
+> Son güncelleme: 2026-11-22 (ses, kamera, ekran Cloudflare Realtime üzerinden canlıda çalışıyor; voice_mode = cf)
 
 ## Durum özeti
 CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'e her push'ta `.github/workflows/pages.yml` ile yayınlanır).
@@ -85,7 +85,7 @@ Kurallar: kart/ödeme YOK; Cloudflare panelde kart isterse dur, kullanıcıya so
 - Doğrulananlar: `npm run build`, `deno check`, cf-voice 22 senaryo sahte Supabase + sahte Cloudflare ile (izinler, oda dolu, başka kanaldan iz çekememe, oturum yönlendirme). **Doğrulanmadı:** gerçek Cloudflare ile ses, RLS SQL testi (MCP onay istedi, zaman aşımı), Chrome'da Web Audio ile yankı engelleme, hoparlör seçimi (`AudioContext.setSinkId`).
 - Belge kaynağı: bu ortamdan developers.cloudflare.com kapalı; `github.com/cloudflare/cloudflare-docs` deposundan okundu (`src/content/docs/realtime/sfu/`, OpenAPI `public/realtime/static/realtime-api-2024-05-21.yaml`).
 
-**2. aşama (kamera + ekran + yayın sesi) yazıldı ve yayında (22 Kas), canlıda DENENMEDİ:**
+**2. aşama (kamera + ekran + yayın sesi) yayında (22 Kas); kullanıcı canlıda denedi: "her şey çalışıyor"** (hangi adımları tek tek denediği sorulmadı). Not: Pages yayını iki kez "github-pages paketi bulunamadı" ile düştü; `pages.yml`'e bekleme + ikinci deneme eklendi.
 - `cfVoice.ts`: `setCamera`, `switchCamera`, `startScreen` (kalite profilleri `CF_SHARE` VoiceContext'te; `restrictOwnAudio`), `stopScreen`; iz adları her yayında yeni (`cam-xxxx`, `screen-xxxx`, `screen-audio-xxxx`); kapatma pazarlıklı (`transceiver.stop()` + offer → `unpublish` sdp ile, `force:false`). Dinleyen odadaki tüm izleri çeker (görünmeyen videoyu duraklatma YOK: kota tüketir, ileride eklenebilir). Yayın sesi ayrı kazanç (`streamVolumes`).
 - `VoiceParticipant.camera/screen` artık `VideoSource` (`attach/detach`); LiveKit `Track` yapısal olarak uyuyor.
 - `cf-voice` v4 dağıtıldı (iz adı deseni, pazarlıklı `unpublish`). Sahte sunucu testleri geçti (25 senaryo).
