@@ -156,6 +156,11 @@ export class CfRoom {
   private volumes: Record<string, number> = {}
   private streamVolumes: Record<string, number> = {}
   private deaf = false
+  /** Bağlantı koptu, yeniden kuruluyor */
+  reconnecting = false
+  private recoverToken = 0
+  private videoWanted = true
+  private last: { channelId: string; userId: string; opts: Parameters<CfRoom['connect']>[2] } | null = null
   /** Ekran paylaşımı dışarıdan bitti (tarayıcının "Paylaşmayı durdur" düğmesi) */
   onScreenEnded: () => void = () => {}
   private cam: LocalPub | null = null
@@ -223,6 +228,7 @@ export class CfRoom {
     await beforeSwitch?.()
     this.teardown() // aynı arka uçta oda değişimi: satır zaten yeni odaya taşındı, silme
     const gen = ++this.gen
+    this.last = { channelId, userId, opts }
     this.userId = userId
     this.channelId = channelId
     this.pubSession = joined.pubSession
@@ -234,12 +240,17 @@ export class CfRoom {
     const cfg: RTCConfiguration = { iceServers: joined.iceServers, bundlePolicy: 'max-bundle' }
     const pubPc = (this.pubPc = new RTCPeerConnection(cfg))
     const subPc = (this.subPc = new RTCPeerConnection(cfg))
-    const watch = (pc: RTCPeerConnection) =>
+    const watch = (pc: RTCPeerConnection) => {
+      let lost = 0
       pc.addEventListener('connectionstatechange', () => {
-        if (gen !== this.gen || pc.connectionState !== 'failed') return
-        this.teardown()
-        this.onDisconnected('Ses bağlantısı koptu. Odaya yeniden gir.')
+        window.clearTimeout(lost)
+        if (gen !== this.gen) return
+        if (pc.connectionState === 'failed') this.recover()
+        // "disconnected" kendiliğinden düzelebilir: 8 sn düzelmezse yeniden bağlan
+        else if (pc.connectionState === 'disconnected')
+          lost = window.setTimeout(() => gen === this.gen && pc.connectionState === 'disconnected' && this.recover(), 8000)
       })
+    }
     watch(pubPc)
     watch(subPc)
     subPc.addEventListener('track', (e) => {
@@ -273,8 +284,61 @@ export class CfRoom {
     await this.setMic(opts.micOn)
   }
 
+  /**
+   * Bağlantı koptu: aynı odaya yeni oturumlarla yeniden bağlan (en çok 4 deneme).
+   * Mikrofon ve kamera geri açılır; ekran paylaşımı kullanıcı izni gerektirdiği için yeniden başlatılmaz.
+   */
+  private async recover() {
+    const last = this.last
+    if (this.reconnecting || !last || !this.connected) return
+    const token = ++this.recoverToken
+    const camWasOn = !!this.cam
+    const screenWasOn = !!this.screen
+    const micOn = this.micWanted
+    this.teardown()
+    this.reconnecting = true
+    this.onChange()
+    for (const wait of [500, 2000, 5000, 10000]) {
+      await new Promise((r) => window.setTimeout(r, wait))
+      if (token !== this.recoverToken) return
+      try {
+        await this.connect(last.channelId, last.userId, {
+          settings: this.settings,
+          micOn,
+          deafened: this.deaf,
+          volumes: this.volumes,
+          streamVolumes: this.streamVolumes,
+        })
+        if (token !== this.recoverToken) return
+        this.reconnecting = false
+        if (camWasOn) this.setCamera(true)
+        if (screenWasOn) {
+          this.onScreenEnded()
+          this.onError('Bağlantı yenilendi. Ekran paylaşımını yeniden başlatman gerekiyor.')
+        }
+        this.onChange()
+        return
+      } catch (e) {
+        console.warn('cf-voice yeniden bağlanma:', e)
+      }
+    }
+    if (token !== this.recoverToken) return
+    this.reconnecting = false
+    this.teardown()
+    this.onDisconnected('Ses bağlantısı koptu ve yeniden kurulamadı. Odaya yeniden gir.')
+  }
+
+  /** Görüntü (kamera/ekran) izleri indirilsin mi? Kimse izlemiyorken kapatmak kotayı korur; ses hep gelir. */
+  setVideoWanted(on: boolean) {
+    if (this.videoWanted === on) return
+    this.videoWanted = on
+    if (this.connected) this.reconcile()
+  }
+
   /** Odadan çık */
   disconnect() {
+    this.recoverToken++ // süren yeniden bağlanma varsa iptal
+    this.reconnecting = false
     if (!this.connected) return
     const pub = this.pubSession
     this.teardown()
@@ -366,14 +430,24 @@ export class CfRoom {
     const want = new Map<string, { userId: string; name: string }>()
     for (const r of this.rows.values()) {
       if (r.user_id === this.userId) continue
-      for (const name of r.tracks) if (kindOf(name)) want.set(`${r.user_id}:${name}:${r.pub_session}`, { userId: r.user_id, name })
+      for (const name of r.tracks) {
+        const kind = kindOf(name)
+        if (!kind || (!this.videoWanted && (kind === 'cam' || kind === 'screen'))) continue
+        want.set(`${r.user_id}:${name}:${r.pub_session}`, { userId: r.user_id, name })
+      }
     }
     return want
   }
 
   private reconcile() {
     const gen = this.gen
-    this.queue = this.queue.then(() => this.reconcileNow(gen)).catch((e) => console.warn('cf-voice dinleme:', e))
+    this.queue = this.queue
+      .then(() => this.reconcileNow(gen))
+      .catch((e) => {
+        console.warn('cf-voice dinleme:', e)
+        // Cloudflare oturumu kapanmış (410): yeni oturumlarla yeniden bağlan
+        if (gen === this.gen && /kapanmış/.test((e as Error).message ?? '')) this.recover()
+      })
   }
 
   private async reconcileNow(gen: number) {
@@ -721,7 +795,9 @@ export class CfRoom {
     this.pubQueue = this.pubQueue
       .then(() => (gen === this.gen && this.pubPc ? job(gen) : undefined))
       .catch((e) => {
-        if (gen === this.gen) this.onError(`${label}: ${(e as Error).message}`)
+        if (gen !== this.gen) return
+        if (/kapanmış/.test((e as Error).message ?? '')) this.recover()
+        else this.onError(`${label}: ${(e as Error).message}`)
       })
       .then(() => this.onChange())
     return this.pubQueue

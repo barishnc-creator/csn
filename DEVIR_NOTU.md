@@ -91,6 +91,11 @@ Kurallar: kart/ödeme YOK; Cloudflare panelde kart isterse dur, kullanıcıya so
 - `cf-voice` v4 dağıtıldı (iz adı deseni, pazarlıklı `unpublish`). Sahte sunucu testleri geçti (25 senaryo).
 - Doğrulanmadı: gerçek Cloudflare ile kamera/ekran, yayın sesi, masaüstü uygulamasında kaynak seçimi, kapatıp yeniden açma.
 
+**3. tur (22 Kas) yayında, canlıda DENENMEDİ:**
+- Kota koruması: görüntü (cam/screen) yalnız `CallStage` ekrandayken ve pencere görünürken indirilir; pencere 20 sn gizli kalırsa bırakılır (`voice.setWatching`, `cf.setVideoWanted`). Ses ve yayın sesi hep gelir.
+- Otomatik yeniden bağlanma (`CfRoom.recover`): PeerConnection `failed`, 8 sn `disconnected` ya da Cloudflare 410 → aynı odaya yeni oturumlarla 4 deneme (0,5/2/5/10 sn). Mikrofon + kamera geri açılır; ekran paylaşımı yeniden başlatılmaz (uyarı verir).
+- TURN desteği sunucuda hazır (`cf-voice` v5): `CF_TURN_KEY_ID` + `CF_TURN_KEY_TOKEN` sırları eklenirse `join` kısa ömürlü TURN kimliği döndürür; yoksa STUN. Sırlar EKLENMEDİ (biri bağlanamazsa: Cloudflare → Realtime → TURN → anahtar oluştur).
+
 **Eksikler / sıradakiler**
 - **CANLI DOĞRULANDI (22 Kas):** kullanıcı sanal kartla Cloudflare Realtime'ı açtı (bugün 0 $), `csn` SFU uygulaması + `CF_REALTIME_*` sırları eklendi, `voice_mode = cf`. İki kişiyle karşılıklı ses çalışıyor (kullanıcı doğruladı; günlüklerde join/publish 200). RLS SQL testi geçti. Bakım duyurusu kapatıldı (`MAINTENANCE.active=false`). Sıradaki: 2. aşama (kamera + ekran).
 0. (Çözüldü) ~~ENGEL (22 Kas): Cloudflare Realtime'ı etkinleştirmek ödeme yöntemi istiyor** (kart / PayPal / Apple-Google Pay; bugün 0 $, 1.000 GB sonrası 0,05 $/GB). Kullanıcının kuralı kart yok: duruldu, karar kullanıcıda. Kullanıcı sanal kartla devam etti.~~

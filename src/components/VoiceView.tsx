@@ -54,6 +54,11 @@ export default function VoiceView({ channel, onToggleMembers }: { channel: Chann
 /** Ses/görüntü sahnesi + kontroller (ses kanalında ve DM aramasında ortak) */
 export function CallStage({ compact }: { compact?: boolean }) {
   const voice = useVoice()
+  const { setWatching } = voice
+  useEffect(() => {
+    setWatching(true)
+    return () => setWatching(false)
+  }, [setWatching])
   const [focus, setFocus] = useState<string | null>(null)
   const [theater, setTheater] = useState(false)
   const tiles: Tile[] = []

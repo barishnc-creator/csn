@@ -4,6 +4,7 @@
 // Gerekli gizli değerler (Supabase → Edge Functions → Secrets):
 //   CF_REALTIME_APP_ID      Cloudflare → Realtime → Serverless SFU → uygulamanın App ID'si
 //   CF_REALTIME_APP_TOKEN   aynı uygulamanın App Secret'ı
+// İsteğe bağlı (TURN): CF_TURN_KEY_ID, CF_TURN_KEY_TOKEN
 //
 // Cloudflare'de oda yok; her kişi iki oturum açar (yayın + dinleme) ve bunlar voice_sessions
 // tablosunda kanalla eşlenir (0023). İstemci hiçbir zaman oturum kimliği seçemez: yayın/dinleme
@@ -215,6 +216,32 @@ function cleanLocal(raw: unknown): { mid: string; name: string }[] {
     .slice(0, 4)
 }
 
+// İsteğe bağlı TURN (UDP'yi kapatan ağlar için): CF_TURN_KEY_ID + CF_TURN_KEY_TOKEN sırları varsa
+// kısa ömürlü kimlik üretilir; yoksa ya da hata olursa yalnız STUN. TURN trafiği aynı 1.000 GB kotadan düşer.
+async function iceServers() {
+  const id = Deno.env.get('CF_TURN_KEY_ID')
+  const token = Deno.env.get('CF_TURN_KEY_TOKEN')
+  if (!id || !token) return ICE_SERVERS
+  try {
+    const res = await fetch(`https://rtc.live.cloudflare.com/v1/turn/keys/${id}/credentials/generate-ice-servers`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ttl: 86400 }),
+      signal: AbortSignal.timeout(5000),
+    })
+    const data = await res.json()
+    if (!res.ok || !Array.isArray(data?.iceServers)) throw new Error(`TURN ${res.status}`)
+    // 53 numaralı kapı tarayıcılarda engelli: bekletmesin diye ayıkla
+    return data.iceServers.map((s: { urls: string | string[] }) => ({
+      ...s,
+      urls: (Array.isArray(s.urls) ? s.urls : [s.urls]).filter((u) => !/:53(\?|$)/.test(u)),
+    }))
+  } catch (e) {
+    console.error('turn', e)
+    return ICE_SERVERS
+  }
+}
+
 // Üyelik, kanal izni ve kişi sınırı: livekit-token ile aynı kurallar.
 // deno-lint-ignore no-explicit-any
 async function join(admin: any, userId: string, channelId: unknown) {
@@ -273,5 +300,5 @@ async function join(admin: any, userId: string, channelId: unknown) {
     console.error('voice_sessions', error)
     return json({ error: 'Ses oturumu kaydedilemedi' }, 500)
   }
-  return json({ pubSession: pub.sessionId, iceServers: ICE_SERVERS })
+  return json({ pubSession: pub.sessionId, iceServers: await iceServers() })
 }

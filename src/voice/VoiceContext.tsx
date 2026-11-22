@@ -84,6 +84,8 @@ interface VoiceState {
   setVolume: (userId: string, v: number) => void
   setStreamVolume: (userId: string, v: number) => void
   updateSettings: (patch: Partial<VoiceSettings>) => void
+  /** Görüntü sahnesi ekranda mı? (kimse izlemiyorken görüntü indirilmez: kota) */
+  setWatching: (on: boolean) => void
   clearError: () => void
 }
 
@@ -626,6 +628,32 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     }
   }, [settings.inputMode, settings.pttKey, channelId, muted, syncMic])
 
+  // Kota koruması (Cloudflare): görüntü yalnız sahne açıkken ve pencere görünürken indirilir.
+  // Pencere 20 sn'den uzun gizli kalırsa görüntü bırakılır, geri gelince yeniden alınır. Ses hep gelir.
+  const viewers = useRef(0)
+  const hideTimer = useRef(0)
+  const applyWatching = useCallback(() => {
+    window.clearTimeout(hideTimer.current)
+    if (viewers.current <= 0) cf.setVideoWanted(false)
+    else if (document.visibilityState === 'visible') cf.setVideoWanted(true)
+    else hideTimer.current = window.setTimeout(() => cf.setVideoWanted(false), 20_000)
+  }, [cf])
+  const setWatching = useCallback(
+    (on: boolean) => {
+      viewers.current += on ? 1 : -1
+      applyWatching()
+    },
+    [applyWatching],
+  )
+  useEffect(() => {
+    applyWatching()
+    document.addEventListener('visibilitychange', applyWatching)
+    return () => {
+      document.removeEventListener('visibilitychange', applyWatching)
+      window.clearTimeout(hideTimer.current)
+    }
+  }, [applyWatching])
+
   // Katılımcı listesi
   const participants = useMemo<VoiceParticipant[]>(() => {
     if (!channelId) return []
@@ -676,7 +704,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
 
   const value: VoiceState = {
     channelId,
-    connecting,
+    connecting: connecting || cf.reconnecting,
     error,
     participants,
     muted,
@@ -694,6 +722,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     setVolume,
     setStreamVolume,
     updateSettings,
+    setWatching,
     clearError: () => setError(null),
   }
 
