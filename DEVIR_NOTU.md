@@ -1,7 +1,7 @@
 # CSN — Devir notu
 
 > Yeni bir oturum buradan devam eder. Önce bunu, sonra `CLAUDE.md`'yi oku.
-> Son güncelleme: 2026-11-21 (Cloudflare Realtime 1. aşama: mikrofon sesi yazıldı, canlı deneme bekliyor)
+> Son güncelleme: 2026-11-22 (Cloudflare Realtime 1. aşama canlıda çalışıyor; sıradaki kamera + ekran)
 
 ## Durum özeti
 CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'e her push'ta `.github/workflows/pages.yml` ile yayınlanır).
@@ -76,7 +76,7 @@ CSN yayında: **https://barishnc-creator.github.io/csn/** (GitHub Pages, `main`'
 ## 🔜 SÜREN İŞ: sesi Cloudflare Realtime SFU'ya taşımak (B planı)
 Kurallar: kart/ödeme YOK; Cloudflare panelde kart isterse dur, kullanıcıya sor.
 
-**1. aşama (yalnız mikrofon) yazıldı ve yayında (21 Kas), canlıda DENENMEDİ** (sırlar yok):
+**1. aşama (yalnız mikrofon) yazıldı ve yayında (21 Kas), canlıda mikrofon sesi doğrulandı**:
 - `0023_cf_voice` uygulandı: `voice_mode` 4. değer `cf`; `voice_sessions` (kişi → kanal, `pub_session`, `sub_session`, `tracks[]`, `last_seen`; RLS: yalnız `can_view_channel` okur, yazma yok), `voice_beat()` (30 sn'de bir; kendi satırını tazeler + kanaldaki 90 sn içinde taze satırları döndürür), `voice_leave(pub)`.
 - `supabase/functions/cf-voice` v1 dağıtıldı (verify_jwt kapalı, kendi doğrular). İşlemler: `join` (livekit-token ile aynı üyelik/izin/kişi sınırı + 2 Cloudflare oturumu), `publish`, `unpublish`, `pull` (hedef AYNI kanalda ve o izi yayınlıyorsa), `answer`, `close`. İstemci oturum kimliği seçemez.
 - `src/voice/cfVoice.ts` (`CfRoom`): iki RTCPeerConnection (yayın: istemci offer; dinleme: SFU offer → `answer`), işlemler oturum başına sırada, kişi başı ses GainNode, konuşan göstergesi AnalyserNode, RNNoise (`createRnnoiseTrack`), susturma = `track.enabled`, çekme başarısızsa 1,5 sn'de yeniden dener.
@@ -86,7 +86,8 @@ Kurallar: kart/ödeme YOK; Cloudflare panelde kart isterse dur, kullanıcıya so
 - Belge kaynağı: bu ortamdan developers.cloudflare.com kapalı; `github.com/cloudflare/cloudflare-docs` deposundan okundu (`src/content/docs/realtime/sfu/`, OpenAPI `public/realtime/static/realtime-api-2024-05-21.yaml`).
 
 **Eksikler / sıradakiler**
-0. **ENGEL (22 Kas): Cloudflare Realtime'ı etkinleştirmek ödeme yöntemi istiyor** (kart / PayPal / Apple-Google Pay; bugün 0 $, 1.000 GB sonrası 0,05 $/GB). Kullanıcının kuralı kart yok: duruldu, karar kullanıcıda. Karar gelene kadar Cloudflare kodu yayında ama etkisiz kalır; Oracle yedeğiyle devam. #yenilikler duyurusu yazıldı (mesaj 61).
+- **CANLI DOĞRULANDI (22 Kas):** kullanıcı sanal kartla Cloudflare Realtime'ı açtı (bugün 0 $), `csn` SFU uygulaması + `CF_REALTIME_*` sırları eklendi, `voice_mode = cf`. İki kişiyle karşılıklı ses çalışıyor (kullanıcı doğruladı; günlüklerde join/publish 200). RLS SQL testi geçti. Bakım duyurusu kapatıldı (`MAINTENANCE.active=false`). Sıradaki: 2. aşama (kamera + ekran).
+0. (Çözüldü) ~~ENGEL (22 Kas): Cloudflare Realtime'ı etkinleştirmek ödeme yöntemi istiyor** (kart / PayPal / Apple-Google Pay; bugün 0 $, 1.000 GB sonrası 0,05 $/GB). Kullanıcının kuralı kart yok: duruldu, karar kullanıcıda. Kullanıcı sanal kartla devam etti.~~
 1. (Kullanıcı) Cloudflare hesabı → Realtime → Serverless SFU → uygulama oluştur → Supabase Edge Function sırları `CF_REALTIME_APP_ID`, `CF_REALTIME_APP_TOKEN` (App Secret). Adımlar kullanıcıya verildi. Kart istenirse dur.
 2. Sırlar gelince: sahip Ayarlar → Ses sunucusu → Cloudflare seçer, iki kişiyle canlı deneme. Hata olursa `query_logs` ile cf-voice günlüklerine bak.
 3. `livekit-token`'a "mod cf iken 409" koruması depoda var ama DAĞITILMADI (yayındaki v10). Cloudflare varsayılan olmadan önce dağıt.

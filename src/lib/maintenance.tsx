@@ -1,7 +1,7 @@
 // Bakım duyurusu: giriş ekranında ve giriş yapanların ekranının üstünde görünür.
 // Bakım bitince MAINTENANCE.active = false yapıp yayınlamak yeterli.
 export const MAINTENANCE = {
-  active: true,
+  active: false,
   title: 'Sunucu bakımda',
   text: 'Sesli kanallarda sorun var, düzeltiyoruz. Bu sürede sesli sohbet çalışmayabilir; metin kanalları açık.',
 }
