@@ -1,0 +1,32 @@
+name: Microsoft Store paketi (Cousy)
+# Elle başlatılır. Store'a yüklenecek .appx dosyasını üretir (imzasız: Store kendi imzasıyla dağıtır).
+# Çıkan dosya: bu çalıştırmanın "Artifacts" bölümünde Cousy-Store. Partner Center → Cousy → Paketler'e yüklenir.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  appx:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci
+      # Store her yüklemede daha büyük sürüm ister ve ilk hane 0 olamaz: 1.0.<çalıştırma no>
+      - run: npx electron-builder --win appx --x64 --publish never "-c.productName=Cousy" "-c.extraMetadata.version=1.0.${{ github.run_number }}"
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Cousy-Store
+          path: desktop/dist/*.appx
+          if-no-files-found: error

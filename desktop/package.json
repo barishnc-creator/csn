@@ -34,7 +34,8 @@
             "x64"
           ]
         }
-      ]
+      ],
+      "icon": "build/icon.ico"
     },
     "nsis": {
       "oneClick": true,
@@ -47,7 +48,20 @@
     "npmRebuild": false,
     "asarUnpack": [
       "node_modules/uiohook-napi/**"
-    ]
+    ],
+    "appx": {
+      "identityName": "TidexTechnology.Cousy",
+      "publisher": "CN=92519CC9-489D-4C57-B346-A84FDF5D6D30",
+      "publisherDisplayName": "Tidex Technology",
+      "displayName": "Cousy",
+      "applicationId": "Cousy",
+      "backgroundColor": "transparent",
+      "languages": [
+        "tr-TR",
+        "en-US"
+      ],
+      "artifactName": "Cousy-Store-${version}.${ext}"
+    }
   },
   "dependencies": {
     "uiohook-napi": "1.5.5"
