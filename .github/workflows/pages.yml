@@ -37,5 +37,12 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
+      # Paket yüklenir yüklenmez yayın adımı onu bulamayabiliyor (GitHub tarafı gecikme): kısa bekle, olmazsa bir kez daha dene
+      - run: sleep 15
       - id: deployment
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+      - if: steps.deployment.outcome == 'failure'
+        run: sleep 45
+      - if: steps.deployment.outcome == 'failure'
         uses: actions/deploy-pages@v4
