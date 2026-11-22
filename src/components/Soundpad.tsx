@@ -54,7 +54,7 @@ export function SoundpadHotkeys() {
     return () => window.removeEventListener('keydown', down)
   }, [inVoice, userId])
 
-  // Masaüstü (0.1.4+): CSN arka plandayken (oyun, başka uygulama) de çalışsın
+  // Masaüstü (0.1.4+): Cousy arka plandayken (oyun, başka uygulama) de çalışsın
   const keys = useSoundpadKeys()
   useEffect(() => {
     const d = getDesktop()
@@ -181,8 +181,8 @@ function SoundpadGrid() {
       {!binding && Object.keys(keys).length > 0 && (
         <div className="small muted">
           {getDesktop()?.setHotkeys
-            ? 'Kısayollar CSN arka plandayken de (oyunda, başka uygulamada) çalışır.'
-            : 'Kısayollar yalnız CSN açıkken çalışır; oyunda ve diğer uygulamalarda da çalışması için masaüstü uygulamasını kullan.'}
+            ? 'Kısayollar Cousy arka plandayken de (oyunda, başka uygulamada) çalışır.'
+            : 'Kısayollar yalnız Cousy açıkken çalışır; oyunda ve diğer uygulamalarda da çalışması için masaüstü uygulamasını kullan.'}
         </div>
       )}
       <label className="music-volume" title="Yalnız sende değişir">

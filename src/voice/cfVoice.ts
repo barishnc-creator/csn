@@ -845,7 +845,7 @@ export class CfRoom {
   startScreen(o: CfScreenOptions) {
     return this.enqueue(async (gen) => {
       if (this.screen) return
-      // Yankı önleme: sistem sesi yakalanırken CSN'nin kendi çaldığı ses yakalamaya girmesin
+      // Yankı önleme: sistem sesi yakalanırken Cousy'nin kendi çaldığı ses yakalamaya girmesin
       const audio = o.audio
         ? ({ restrictOwnAudio: true, echoCancellation: false, noiseSuppression: false, autoGainControl: false } as MediaTrackConstraints)
         : false

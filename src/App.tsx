@@ -38,7 +38,7 @@ export default function App() {
     return (
       <div className="center-screen">
         <div className="card">
-          <h1>CSN</h1>
+          <h1>Cousy</h1>
           <p>Uygulama henüz bir sunucuya bağlanmadı. <code>VITE_SUPABASE_URL</code> ve <code>VITE_SUPABASE_KEY</code> ayarlanmalı.</p>
         </div>
       </div>

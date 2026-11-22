@@ -1,4 +1,4 @@
-// CSN masaüstü uygulaması (Electron) köprüsü.
+// Cousy masaüstü uygulaması (Electron) köprüsü.
 // Masaüstünde preload betiği `window.csnDesktop` nesnesini tanımlar; tarayıcıda yoktur.
 
 export interface DesktopSource {
@@ -17,7 +17,7 @@ export interface DesktopBridge {
   titleBarHeight?: number
   setTitleBarColors?(color: string, symbolColor: string): Promise<void>
   onFullscreen?(cb: (on: boolean) => void): () => void
-  /** 0.1.4+: soundpad kısayolları CSN arka plandayken de çalışır */
+  /** 0.1.4+: soundpad kısayolları Cousy arka plandayken de çalışır */
   setHotkeys?(list: { id: string; combo: string }[]): Promise<boolean>
   onHotkey?(cb: (id: string) => void): () => void
 }
@@ -59,7 +59,7 @@ export function initDesktopTitleBar() {
 
   const bar = document.createElement('div')
   bar.className = 'desk-titlebar'
-  bar.innerHTML = '<span class="desk-titlebar-logo">C</span><span class="desk-titlebar-name">CSN</span>'
+  bar.innerHTML = '<span class="desk-titlebar-logo"><svg width="11" height="11" viewBox="67 96 352 320" fill="none"><path d="M356 172A128 128 0 1 0 356 340" stroke="currentColor" stroke-width="64" stroke-linecap="round"/><circle cx="352" cy="256" r="32" fill="currentColor"/></svg></span><span class="desk-titlebar-name">Cousy</span>'
   document.body.prepend(bar)
 
   let last = ''

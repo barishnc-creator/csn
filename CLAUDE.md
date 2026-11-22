@@ -1,4 +1,6 @@
-# CSN
+# Cousy (eski adı CSN)
+
+> Uygulamanın adı 22 Kas 2026'da **Cousy** oldu. Depo, site adresi (`/csn/`), Supabase projesi, `localStorage` anahtarları ve masaüstü `appId` eski adla (`csn`) kalır; değiştirme.
 
 > Yeni oturumda önce `DEVIR_NOTU.md`'yi oku: güncel durum, yapılanlar, sıradakiler orada.
 
@@ -33,7 +35,7 @@ CSN'deki değişiklik istekleri uygulama içindeki **Revizeler** bölümünden g
 
 ## #yenilikler kanalı (kesin kural)
 Yayına giden her değişikliği, `#yenilikler` kanalına (id `3e81c0b9-a9b7-41ef-90d4-2f31e93b24e8`, yalnız CEO ve GELİŞTİRİCİ rolleri görür) **madde madde, kısa ve Türkçe** olarak paylaş.
-- Yazar her zaman bot hesabı **CSN Güncelleme** (`c5b00000-0000-4000-8000-00000000c5b0`, giriş yapılamaz). Kullanıcı adına yazma.
+- Yazar her zaman bot hesabı **Cousy Güncelleme** (`c5b00000-0000-4000-8000-00000000c5b0`, giriş yapılamaz). Kullanıcı adına yazma.
 - Supabase MCP ile: `insert into public.messages (channel_id, author_id, content) values ('3e81c0b9-a9b7-41ef-90d4-2f31e93b24e8', 'c5b00000-0000-4000-8000-00000000c5b0', $$🆕 **Başlık**\n• madde\n• madde$$);`
 - Biten revizeleri "Revize #N ✅" diye belirt; yarım kalanları "⏳ Yapılıyor" altında yaz. Denenmemiş şeyleri öyle olduğunu söyleyerek yaz.
 

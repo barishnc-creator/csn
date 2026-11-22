@@ -10,7 +10,7 @@ contextBridge.exposeInMainWorld('csnDesktop', {
   // Özel başlık çubuğu (0.1.3+)
   titleBarHeight: 34,
   setTitleBarColors: (color, symbolColor) => ipcRenderer.invoke('csn:titlebar', String(color), String(symbolColor)),
-  // Soundpad genel kısayolları (0.1.4+): CSN arka plandayken de çalışır
+  // Soundpad genel kısayolları (0.1.4+): Cousy arka plandayken de çalışır
   setHotkeys: (list) =>
     ipcRenderer.invoke(
       'csn:set-hotkeys',

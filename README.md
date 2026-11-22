@@ -1,4 +1,4 @@
-# CSN
+# Cousy
 
 Arkadaşlar ve ekip için kapalı, Discord benzeri sohbet uygulaması.
 

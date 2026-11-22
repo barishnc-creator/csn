@@ -61,7 +61,7 @@ export default function UserProfileModal({ userId, onClose, onEditProfile }: { u
               </div>
               {member && (
                 <div className="profile-section">
-                  <div className="profile-label">CSN üyesi</div>
+                  <div className="profile-label">Cousy üyesi</div>
                   <div>{new Date(member.joined_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
                 </div>
               )}

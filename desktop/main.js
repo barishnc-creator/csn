@@ -1,4 +1,4 @@
-// CSN masaüstü uygulaması: yayındaki web sitesini açar, ekran paylaşımında
+// Cousy masaüstü uygulaması: yayındaki web sitesini açar, ekran paylaşımında
 // tarayıcının kendi seçim penceresi ve "ekranınızı paylaşıyor" çubuğu yerine
 // uygulama içi seçiciyi kullanır (window.csnDesktop köprüsü, preload.js).
 'use strict'
@@ -10,7 +10,7 @@ const APP_URL = 'https://barishnc-creator.github.io/csn/'
 const APP_ORIGIN = new URL(APP_URL).origin
 const TITLEBAR_HEIGHT = 34
 
-// Uygulama içinde kalan adresler: yalnız CSN sitesi
+// Uygulama içinde kalan adresler: yalnız Cousy sitesi
 function isAppUrl(url) {
   try {
     const u = new URL(url)
@@ -29,7 +29,13 @@ function isSafeExternal(url) {
   }
 }
 
-app.setName('CSN')
+app.setName('Cousy')
+// Ad CSN'den Cousy'ye değişti; oturum ve ayarlar kaybolmasın diye veri klasörü eski adla kalır
+try {
+  app.setPath('userData', path.join(app.getPath('appData'), 'CSN'))
+} catch {
+  // Store paketi vb.: varsayılan klasör
+}
 if (process.platform === 'win32') app.setAppUserModelId('com.csn.desktop')
 
 // Tek kopya: ikinci açılışta mevcut pencereyi öne getir
@@ -81,7 +87,7 @@ if (!app.requestSingleInstanceLock()) {
     } catch {}
   })
 
-  // ───── Soundpad kısayolları: CSN arka plandayken de (oyun, başka uygulama) çalışır ─────
+  // ───── Soundpad kısayolları: Cousy arka plandayken de (oyun, başka uygulama) çalışır ─────
   // uiohook tuşları yalnız dinler, engellemez: atanmış tuş diğer uygulamalarda da yazılmaya devam eder.
   let hook = null
   try {
@@ -166,7 +172,7 @@ if (!app.requestSingleInstanceLock()) {
       height: 800,
       minWidth: 940,
       minHeight: 560,
-      title: 'CSN',
+      title: 'Cousy',
       backgroundColor: '#0f1117',
       autoHideMenuBar: true,
       // Windows'un beyaz başlık çubuğu yerine sayfanın kendi (temaya uygun) çubuğu;
@@ -250,7 +256,7 @@ if (!app.requestSingleInstanceLock()) {
     nativeTheme.themeSource = 'dark'
     const ses = session.defaultSession
 
-    // İzinler yalnız CSN sitesine
+    // İzinler yalnız Cousy sitesine
     const ALLOWED = new Set([
       'media',
       'display-capture',

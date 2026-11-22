@@ -50,7 +50,7 @@ export default function FriendsActivity() {
           <div className="friend-activity-where">
             <span className="fa-server">C</span>
             <div className="fa-where-text">
-              <strong>CSN</strong>
+              <strong>Cousy</strong>
               {p?.voice_channel_id ? (
                 vc?.kind === 'voice' ? (
                   <span className="fa-voice">

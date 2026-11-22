@@ -21,7 +21,7 @@ export default function ReloadDialog({ onClose }: { onClose: () => void }) {
           <h3>Herkesi yenile</h3>
           <button className="icon-btn" onClick={onClose} title="Kapat"><Icon name="x" /></button>
         </div>
-        <p className="muted">CSN'yi açık tutan herkesin ekranı 5 saniye içinde yenilenir ve yeni sürüm yüklenir. Sesli sohbette olanların bağlantısı koparılmaz; onlara bir uyarı gösterilir.</p>
+        <p className="muted">Cousy'yi açık tutan herkesin ekranı 5 saniye içinde yenilenir ve yeni sürüm yüklenir. Sesli sohbette olanların bağlantısı koparılmaz; onlara bir uyarı gösterilir.</p>
         <label>
           Kısa not (isteğe bağlı)
           <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} placeholder="ör. Emoji tepkileri geldi!" autoFocus />

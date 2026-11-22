@@ -106,6 +106,12 @@ Kurallar: kart/ödeme YOK; Cloudflare panelde kart isterse dur, kullanıcıya so
 5. Bilinen sınırlar: yalnız STUN (UDP kapalı ağlarda bağlanamayabilir; Cloudflare TURN ayrı anahtar ister, aynı 1.000 GB kotadan); bağlantı koparsa otomatik yeniden bağlanma yok (uyarı verip odadan düşer); bas-konuşta ilk basışta mikrofon izni/yayın ~1 sn gecikir; sekmesi kapanan kişi 90 sn listede kalabilir; DTX kapalı.
 6. Oracle yedek: kullanıcı makineyi açıp `LIVEKIT_SELF_*` sırlarını ekleyince adresi `selfhost/livekit/host.txt`'e yaz, canlı test, `MAINTENANCE.active=false`, #yenilikler.
 
+## Ad değişikliği + Microsoft Store (22 Kas)
+- Uygulama adı **Cousy** (kullanıcı kararı). Arayüz metinleri, başlık, manifest, masaüstü `productName`, botlar ("Cousy Güncelleme", "Cousy Müzik") değişti. Değişmeyenler: depo, `/csn/` adresi, Supabase projesi, `csn.*` localStorage anahtarları, `appId com.csn.desktop`, masaüstü veri klasörü (`%APPDATA%/CSN`, oturum kaybolmasın diye `main.js`'te sabit).
+- Yeni logo: `public/favicon.svg` (kaynak), `src/components/Logo.tsx` (işaret), PNG/ICO/appx simgeleri ondan üretildi (Playwright + PIL; betikler oturum scratchpad'indeydi, yeniden gerekirse favicon.svg'den üret).
+- Store: kullanıcı Microsoft geliştirici hesabı açtı (yayıncı "Tidex Technology"), "Cousy" adını ayırttı. Kimlik `desktop/package.json` → `build.appx` içinde. `.github/workflows/store.yml` (elle başlatılır) imzasız `.appx` üretir → Actions çalıştırmasının Artifacts'ında `Cousy-Store` → kullanıcı Partner Center → Cousy → Paketler'e yükler. Sürüm `1.0.<çalıştırma no>`. İlk derleme başarılı. **Store'a yükleme ve inceleme DENENMEDİ**; `runFullTrust` için gerekçe istenir ("Electron masaüstü uygulaması").
+- Masaüstü .exe (NSIS) sürümü 0.2.0 olarak hazır ama Release ÇIKARILMADI (kullanıcıya sor).
+
 ## Bekleyen karar
 - Masaüstü .exe imzasız: Windows 11 "Akıllı Uygulama Denetimi" açık olan bilgisayarlarda engelleniyor (egunesx'te oldu). Geçici çözüm: PWA olarak yükleme (⚙️ → Uygulama olarak yükle). Kalıcı çözüm seçenekleri (Microsoft Store, ücretsiz bireysel hesap / kod imzalama sertifikası) kullanıcıya sunuldu; **"şimdilik kalsın" dedi**, sormadan başlama.
 

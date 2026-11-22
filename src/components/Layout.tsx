@@ -1,3 +1,4 @@
+import Logo from './Logo'
 import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../lib/store'
 import { supabase } from '../lib/supabase'
@@ -135,7 +136,7 @@ export default function Layout() {
   // Pencere başlığı
   const totalMentions = Object.values(mentions).reduce((a, b) => a + b, 0)
   useEffect(() => {
-    document.title = totalMentions ? `(${totalMentions}) CSN` : 'CSN'
+    document.title = totalMentions ? `(${totalMentions}) Cousy` : 'Cousy'
   }, [totalMentions])
 
   // Gelen DM araması: biri, üyesi olduğum bir DM'nin ses odasında ve ben değilim
@@ -215,10 +216,10 @@ export default function Layout() {
         <div className="rail-sep" />
         <button
           className={`rail-btn server${mode === 'server' ? ' active' : ''}`}
-          title="CSN"
+          title="Cousy"
           onClick={() => select(lastServerChannel ?? serverChannels.find((c) => c.kind === 'text')?.id ?? null, 'server')}
         >
-          CSN
+          <Logo size={24} />
           {serverUnread > 0 && mode !== 'server' && (
             <span className={`rail-badge${serverMentions ? '' : ' soft'}`}>{serverUnread > 99 ? '99+' : serverUnread}</span>
           )}
@@ -271,7 +272,7 @@ export default function Layout() {
         <div className="reload-banner">
           <Icon name="refresh" size={18} />
           <div>
-            <strong>{reloadNotice.forced ? 'CSN güncellendi.' : 'Yeni sürüm hazır.'}</strong>{' '}
+            <strong>{reloadNotice.forced ? 'Cousy güncellendi.' : 'Yeni sürüm hazır.'}</strong>{' '}
             {reloadNotice.note && <span>{reloadNotice.note} · </span>}
             {countdown !== null
               ? `${countdown} saniye içinde yenileniyor…`

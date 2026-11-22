@@ -34,13 +34,13 @@ jobs:
           if (-not (Test-Path "$unpacked/prebuilds/win32-x64")) { Get-ChildItem -Recurse dist/win-unpacked/resources | Select-Object -First 40; throw "uiohook-napi pakete girmemiş" }
           $env:ELECTRON_RUN_AS_NODE = "1"
           $asar = (Resolve-Path "dist/win-unpacked/resources/app.asar").Path
-          # CSN.exe pencereli uygulama: çıkış kodu güvenilmez, çıktıya bakılır (boru hattı bitmesini bekletir)
-          $out = & "dist/win-unpacked/CSN.exe" -e "const h=require(process.argv[1]+'/node_modules/uiohook-napi'); console.log(h.uIOhook && h.UiohookKey ? 'uiohook OK ' + Object.keys(h.UiohookKey).length : 'uiohook EKSIK')" $asar 2>&1 | Out-String
+          # Cousy.exe pencereli uygulama: çıkış kodu güvenilmez, çıktıya bakılır (boru hattı bitmesini bekletir)
+          $out = & "dist/win-unpacked/Cousy.exe" -e "const h=require(process.argv[1]+'/node_modules/uiohook-napi'); console.log(h.uIOhook && h.UiohookKey ? 'uiohook OK ' + Object.keys(h.UiohookKey).length : 'uiohook EKSIK')" $asar 2>&1 | Out-String
           Write-Output $out
           if ($out -notmatch 'uiohook OK') { throw "uiohook-napi paketlenmiş uygulamada yüklenemedi" }
       - uses: actions/upload-artifact@v4
         with:
-          name: CSN-Windows
+          name: Cousy-Windows
           path: desktop/dist/*.exe
           if-no-files-found: error
       - name: Sürümü oku
@@ -53,8 +53,8 @@ jobs:
           files: desktop/dist/*.exe
           tag_name: desktop-v${{ steps.ver.outputs.version }}
           target_commitish: ${{ github.sha }}
-          name: CSN Masaüstü ${{ steps.ver.outputs.version }}
+          name: Cousy Masaüstü ${{ steps.ver.outputs.version }}
           make_latest: true
           body: |
-            Windows kurulum dosyası. `CSN-Kurulum-...exe` dosyasını indirip çalıştırın; CSN otomatik açılır.
+            Windows kurulum dosyası. `Cousy-Kurulum-...exe` dosyasını indirip çalıştırın; Cousy otomatik açılır.
             İlk açılışta Windows "bilinmeyen yayıncı" uyarısı verirse **Ek bilgi → Yine de çalıştır** deyin (uygulama imzalı değil).

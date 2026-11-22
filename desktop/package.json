@@ -1,9 +1,9 @@
 {
   "name": "csn-desktop",
-  "productName": "CSN",
-  "version": "0.1.4",
-  "description": "CSN masaüstü uygulaması",
-  "author": "CSN",
+  "productName": "Cousy",
+  "version": "0.2.0",
+  "description": "Cousy masaüstü uygulaması",
+  "author": "Cousy",
   "private": true,
   "main": "main.js",
   "scripts": {
@@ -16,8 +16,8 @@
   },
   "build": {
     "appId": "com.csn.desktop",
-    "productName": "CSN",
-    "artifactName": "CSN-Kurulum-${version}.${ext}",
+    "productName": "Cousy",
+    "artifactName": "Cousy-Kurulum-${version}.${ext}",
     "directories": {
       "output": "dist"
     },
@@ -42,7 +42,7 @@
       "perMachine": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "CSN"
+      "shortcutName": "Cousy"
     },
     "publish": null,
     "npmRebuild": false,

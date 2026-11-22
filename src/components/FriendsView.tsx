@@ -115,7 +115,7 @@ export default function FriendsView() {
 
         {tab === 'add' && (
           <>
-            <div className="category">CSN üyeleri — {candidates.length}</div>
+            <div className="category">Cousy üyeleri — {candidates.length}</div>
             {candidates.map((id) => {
               const st = friendState(id)
               return (

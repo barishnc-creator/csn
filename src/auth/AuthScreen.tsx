@@ -1,3 +1,4 @@
+import Logo from '../components/Logo'
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { pendingInvite } from '../lib/invite'
@@ -39,10 +40,10 @@ export default function AuthScreen() {
   return (
     <div className="center-screen auth-bg">
       <form className="card auth-card" onSubmit={submit}>
-        <div className="auth-logo">CSN</div>
+        <div className="auth-logo"><Logo size={36} /></div>
         <MaintenanceBanner variant="auth" />
         <h1>{mode === 'login' ? 'Tekrar hoş geldin!' : 'Hesap oluştur'}</h1>
-        <p className="muted">{mode === 'login' ? 'Ekibin seni bekliyor.' : 'Davet kodunla CSN\'ye katıl.'}</p>
+        <p className="muted">{mode === 'login' ? 'Ekibin seni bekliyor.' : 'Davet kodunla Cousy\'ye katıl.'}</p>
 
         {mode === 'register' && (
           <label>

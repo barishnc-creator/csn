@@ -169,7 +169,7 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
                 >
                   <Avatar profile={profiles[MUSIC_BOT_ID]} userId={MUSIC_BOT_ID} size={22} spinning={!musicRows[c.id].paused} />
                   <span className="voice-user-name">
-                    {profiles[MUSIC_BOT_ID]?.display_name ?? 'CSN Müzik'}
+                    {profiles[MUSIC_BOT_ID]?.display_name ?? 'Cousy Müzik'}
                     <span className="voice-user-sub">{musicRows[c.id].paused ? '⏸ ' : '🎵 '}{musicRows[c.id].current!.title}</span>
                   </span>
                   <span className="bot-badge">BOT</span>
@@ -184,7 +184,7 @@ export default function ChannelSidebar({ currentId, onSelect, unread, mentions, 
       <header className="sidebar-header">
         <div className="sidebar-title">
           <span className="server-mini">C</span>
-          <span>CSN</span>
+          <span>Cousy</span>
         </div>
         <div className="sidebar-header-actions">
           <button className="icon-btn" title="Arkadaşlar" onClick={onFriends}><Icon name="friends" size={18} /></button>
@@ -299,7 +299,7 @@ export function UserPanel({ onOpenSettings }: { onOpenSettings: (tab: SettingsTa
 
   return (
     <div className="user-panel">
-      <button className="icon-btn logout-btn" title="Çıkış yap" onClick={async () => (await confirmDialog({ title: 'Çıkış yapılsın mı?', message: 'CSN hesabından çıkış yapacaksın.', confirmText: 'Çıkış yap', danger: true })) && supabase.auth.signOut()}>
+      <button className="icon-btn logout-btn" title="Çıkış yap" onClick={async () => (await confirmDialog({ title: 'Çıkış yapılsın mı?', message: 'Cousy hesabından çıkış yapacaksın.', confirmText: 'Çıkış yap', danger: true })) && supabase.auth.signOut()}>
         <Icon name="logout" size={18} />
       </button>
       <button className="user-panel-me" onClick={() => setStatusMenu((s) => !s)}>

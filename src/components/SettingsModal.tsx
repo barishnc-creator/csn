@@ -410,7 +410,7 @@ function VoiceTab() {
           <button className={`btn${capturing ? ' primary' : ''}`} onClick={() => setCapturing(true)}>
             {capturing ? 'Bir tuşa bas… (Esc iptal)' : s.pttKey.replace(/^Key/, '').replace(/^Digit/, '')}
           </button>
-          <span className="muted small">Not: Tarayıcıda bas-konuş yalnız CSN penceresi öndeyken çalışır.</span>
+          <span className="muted small">Not: Tarayıcıda bas-konuş yalnız Cousy penceresi öndeyken çalışır.</span>
         </div>
       )}
 
@@ -481,7 +481,7 @@ function InvitesTab() {
     const url = inviteLink(code)
     if (navigator.share) {
       try {
-        await navigator.share({ title: 'CSN daveti', text: 'CSN sunucumuza katıl!', url })
+        await navigator.share({ title: 'Cousy daveti', text: 'Cousy sunucumuza katıl!', url })
         return
       } catch {
         // kullanıcı vazgeçti → kopyalamaya düş
@@ -1023,7 +1023,7 @@ const BOT_STATUSES: { id: UserStatus; label: string; hint: string }[] = [
 function BotTab() {
   const { profiles, userId, refreshProfiles } = useApp()
   const bot = profiles[MUSIC_BOT_ID]
-  const [name, setName] = useState(bot?.display_name ?? 'CSN Müzik')
+  const [name, setName] = useState(bot?.display_name ?? 'Cousy Müzik')
   const [status, setStatus] = useState(bot?.custom_status ?? '')
   const [bio, setBio] = useState(bot?.bio ?? '')
   const [presence, setPresence] = useState<UserStatus>(bot?.bot_presence ?? 'online')
@@ -1069,7 +1069,7 @@ function BotTab() {
   }
 
   function reset() {
-    setName(bot?.display_name ?? 'CSN Müzik')
+    setName(bot?.display_name ?? 'Cousy Müzik')
     setStatus(bot?.custom_status ?? '')
     setBio(bot?.bio ?? '')
     setPresence(bot?.bot_presence ?? 'online')

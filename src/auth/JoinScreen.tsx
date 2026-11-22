@@ -1,3 +1,4 @@
+import Logo from '../components/Logo'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
@@ -56,18 +57,18 @@ export default function JoinScreen({ session, onJoined }: { session: Session; on
   return (
     <div className="center-screen auth-bg">
       <div className="card auth-card">
-        <div className="auth-logo">CSN</div>
+        <div className="auth-logo"><Logo size={36} /></div>
         {initialized === false ? (
           <>
             <h1>Sunucuyu kur</h1>
-            <p className="muted">CSN'de henüz kimse yok. Kurarsan sunucunun yöneticisi sen olursun ve arkadaşlarına davet kodu verebilirsin.</p>
+            <p className="muted">Cousy'de henüz kimse yok. Kurarsan sunucunun yöneticisi sen olursun ve arkadaşlarına davet kodu verebilirsin.</p>
             {error && <div className="form-error">{error}</div>}
             <button className="btn primary block" onClick={claim} disabled={busy}>Sunucuyu kur ve yönetici ol</button>
           </>
         ) : (
           <form onSubmit={submit}>
             <h1>Davet kodu</h1>
-            <p className="muted">CSN kapalı bir sunucu. Katılmak için bir yöneticiden davet kodu iste.</p>
+            <p className="muted">Cousy kapalı bir sunucu. Katılmak için bir yöneticiden davet kodu iste.</p>
             <label>
               Davet kodu
               <input value={code} onChange={(e) => setCode(e.target.value)} autoFocus required />

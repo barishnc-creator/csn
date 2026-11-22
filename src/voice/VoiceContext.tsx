@@ -484,7 +484,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
       }
       if (room.state !== ConnectionState.Connected) return
       const preset = SHARE_PRESETS[choice.quality]
-      // Yankı önleme: sistem sesi yakalanırken CSN'nin kendi çaldığı ses (arkadaşların konuşması)
+      // Yankı önleme: sistem sesi yakalanırken Cousy'nin kendi çaldığı ses (arkadaşların konuşması)
       // yakalamaya girmesin (restrictOwnAudio; Chrome 141+ ve Electron 45 destekler). Yayın sesi
       // müzik/oyun olduğu için konuşma işlemleri kapalı.
       const screenAudio = {
