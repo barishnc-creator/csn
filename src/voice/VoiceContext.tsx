@@ -22,9 +22,14 @@ import { playSound } from './sounds'
 import { RnnoiseProcessor } from './rnnoise'
 import ScreenSharePicker, { type ShareChoice, type ShareQuality } from './ScreenSharePicker'
 import { getDesktop } from '../lib/desktop'
-import { CfRoom } from './cfVoice'
+import { CfRoom, type VideoSource } from './cfVoice'
 
-const CF_NO_VIDEO = 'Cloudflare ses sunucusunda kamera ve ekran paylaşımı henüz yok (yakında).'
+// Cloudflare arka ucunda ekran paylaşımı kalite profilleri
+const CF_SHARE: Record<ShareQuality, { width: number; height: number; fps: number; maxBitrate: number }> = {
+  smooth: { width: 1280, height: 720, fps: 30, maxBitrate: 2_500_000 },
+  clear: { width: 1920, height: 1080, fps: 30, maxBitrate: 4_000_000 },
+  game: { width: 1920, height: 1080, fps: 60, maxBitrate: 8_000_000 },
+}
 
 // Ekran paylaşımı kalite profilleri (LiveKit'te hazır 1080p60 profili yok, elle tanımlı)
 const SHARE_PRESETS: Record<ShareQuality, VideoPreset> = {
@@ -54,8 +59,8 @@ export interface VoiceParticipant {
   isLocal: boolean
   speaking: boolean
   micMuted: boolean
-  camera?: Track
-  screen?: Track
+  camera?: VideoSource
+  screen?: VideoSource
   screenAudio: boolean // yayının sesi var mı
 }
 
@@ -224,7 +229,12 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     cf.onChange = bump
     cf.onPeerJoin = () => playSound('join')
     cf.onPeerLeave = () => playSound('leave')
-    cf.onError = (m) => setError(m)
+    cf.onError = (m) => {
+      // Ekran paylaşımı penceresinde "İptal" demek hata değildir
+      if (/Permission denied|NotAllowed|AbortError/i.test(m) && shareAttempt.current) return
+      setError(m)
+    }
+    cf.onScreenEnded = () => updatePresence({ streaming: false })
     cf.onDisconnected = (m) => {
       cfOn.current = false
       setError(m)
@@ -337,7 +347,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
           await cf.connect(
             id,
             myId,
-            { settings: s, micOn: micShouldBeOn(muted, false), deafened, volumes: s.volumes },
+            { settings: s, micOn: micShouldBeOn(muted, false), deafened, volumes: s.volumes, streamVolumes: s.streamVolumes ?? {} },
             async () => {
               switched = true
               if (room.state !== ConnectionState.Disconnected) await room.disconnect()
@@ -416,7 +426,10 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   }, [deafened, pttActive, room, cf, applyVolume, syncMic, updatePresence])
 
   const toggleCamera = useCallback(async () => {
-    if (cfOn.current) return setError(CF_NO_VIDEO)
+    if (cfOn.current) {
+      await cf.setCamera(!cf.cameraOn, settings.cameraId)
+      return
+    }
     if (room.state !== ConnectionState.Connected) return
     const on = room.localParticipant.isCameraEnabled
     try {
@@ -425,13 +438,19 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
       setError(`Kamera açılamadı: ${(e as Error).message}`)
     }
     bump()
-  }, [room, settings.cameraId])
+  }, [room, cf, settings.cameraId])
 
   const [pickerOpen, setPickerOpen] = useState(false)
 
   // Açmak: önce uygulama içi seçim penceresi. Kapatmak: anında.
   const toggleScreen = useCallback(async () => {
-    if (cfOn.current) return setError(CF_NO_VIDEO)
+    if (cfOn.current) {
+      if (cf.screenOn) {
+        await cf.stopScreen()
+        updatePresence({ streaming: false })
+      } else setPickerOpen(true)
+      return
+    }
     if (room.state !== ConnectionState.Connected) return
     if (room.localParticipant.isScreenShareEnabled) {
       try {
@@ -444,12 +463,23 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
       return
     }
     setPickerOpen(true)
-  }, [room, updatePresence])
+  }, [room, cf, updatePresence])
 
   const startScreenShare = useCallback(
     async (choice: ShareChoice) => {
       setPickerOpen(false)
       shareAttempt.current = true
+      if (cfOn.current) {
+        try {
+          const desktop = getDesktop()
+          if (desktop && choice.sourceId) await desktop.selectSource(choice.sourceId, choice.audio)
+          await cf.startScreen({ surface: choice.surface, audio: choice.audio, motion: choice.quality === 'game', ...CF_SHARE[choice.quality] })
+          if (cf.screenOn) updatePresence({ streaming: true })
+        } finally {
+          window.setTimeout(() => (shareAttempt.current = false), 500)
+        }
+        return
+      }
       if (room.state !== ConnectionState.Connected) return
       const preset = SHARE_PRESETS[choice.quality]
       // Yankı önleme: sistem sesi yakalanırken CSN'nin kendi çaldığı ses (arkadaşların konuşması)
@@ -487,7 +517,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
       }
       bump()
     },
-    [room, updatePresence],
+    [room, cf, updatePresence],
   )
 
   // Paylaşım dışarıdan biterse (tarayıcının "Paylaşmayı durdur" düğmesi, pencere kapanması) durumu düzelt
@@ -525,12 +555,13 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
       setSettings((s) => {
         const next = { ...s, streamVolumes: { ...(s.streamVolumes ?? {}), [userId]: v } }
         settingsRef.current = next
+        cf.setStreamVolumes(next.streamVolumes)
         return next
       })
       const p = room.remoteParticipants.get(userId)
       if (p) applyVolume(p)
     },
-    [room, applyVolume],
+    [room, cf, applyVolume],
   )
 
   const updateSettings = useCallback(
@@ -542,6 +573,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
       })
       if (cfOn.current) {
         cf.updateSettings({ ...settingsRef.current, ...patch })
+        if (patch.cameraId) cf.switchCamera(patch.cameraId)
         if (patch.inputMode) syncMic(muted, false)
         return
       }
@@ -604,6 +636,8 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
         isLocal: true,
         speaking: cf.localSpeaking,
         micMuted: !cf.micOn,
+        camera: cf.localCamera,
+        screen: cf.localScreen,
         screenAudio: false,
       }
       return [
@@ -614,7 +648,9 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
           isLocal: false,
           speaking: p.speaking,
           micMuted: !p.hasMic || !!presence[p.id]?.muted,
-          screenAudio: false,
+          camera: p.camera,
+          screen: p.screen,
+          screenAudio: p.screenAudio,
         })),
       ]
     }
@@ -645,8 +681,8 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
     participants,
     muted,
     deafened,
-    cameraOn: channelId && !cfOn.current ? room.localParticipant.isCameraEnabled : false,
-    screenOn: channelId && !cfOn.current ? room.localParticipant.isScreenShareEnabled : false,
+    cameraOn: !channelId ? false : cfOn.current ? cf.cameraOn : room.localParticipant.isCameraEnabled,
+    screenOn: !channelId ? false : cfOn.current ? cf.screenOn : room.localParticipant.isScreenShareEnabled,
     pttActive,
     settings,
     join,

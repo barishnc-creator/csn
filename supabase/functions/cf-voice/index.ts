@@ -13,7 +13,7 @@
 // İstek: POST { action, ... }
 //   join      { channelId }                    → { pubSession, iceServers }
 //   publish   { sdp, tracks: [{ mid, name }] } → { sdp (answer), tracks: [{ name, mid, error? }] }
-//   unpublish { tracks: [{ mid, name }] }      → { ok }
+//   unpublish { tracks: [{ mid, name }], sdp? } → { ok, sdp (answer) | null }
 //   pull      { tracks: [{ userId, name }] }   → { sdp (offer) | null, tracks: [{ userId, name, mid?, error? }] }
 //   answer    { sdp }                          → { ok }
 //   close     { mids: [] }                     → { ok }
@@ -34,7 +34,9 @@ function json(body: unknown, status = 200) {
   })
 }
 
-const TRACK_NAMES = ['mic', 'cam', 'screen', 'screen-audio']
+// İz adı: mic | cam | screen | screen-audio, isteğe bağlı kısa ek (her yayın yeni ad alır)
+const TRACK_NAME = /^(mic|cam|screen|screen-audio)(-[a-z0-9]{1,8})?$/
+const okName = (n: unknown): n is string => typeof n === 'string' && TRACK_NAME.test(n)
 const FRESH_MS = 90_000
 const ICE_SERVERS = [{ urls: 'stun:stun.cloudflare.com:3478' }]
 
@@ -151,12 +153,16 @@ Deno.serve(async (req) => {
         const names = tracks.map((t) => t.name)
         const next = (mine.tracks as string[]).filter((n) => !names.includes(n))
         await admin.from('voice_sessions').update({ tracks: next }).eq('user_id', user.id).eq('pub_session', mine.pub_session)
-        await cf(`/sessions/${mine.pub_session}/tracks/close`, 'PUT', { tracks: tracks.map((t) => ({ mid: t.mid })), force: true })
-        return json({ ok: true })
+        // sdp verilirse pazarlıklı kapatma (istemci alıcı-vericiyi durdurup offer gönderir), yoksa zorla
+        const closeBody = isStr(body.sdp)
+          ? { tracks: tracks.map((t) => ({ mid: t.mid })), sessionDescription: { type: 'offer', sdp: body.sdp }, force: false }
+          : { tracks: tracks.map((t) => ({ mid: t.mid })), force: true }
+        const r = await cf(`/sessions/${mine.pub_session}/tracks/close`, 'PUT', closeBody)
+        return json({ ok: true, sdp: r.sessionDescription?.sdp ?? null })
       }
       case 'pull': {
         const wanted: { userId: string; name: string }[] = (Array.isArray(body.tracks) ? body.tracks : [])
-          .filter((t: { userId?: unknown; name?: unknown }) => isStr(t?.userId) && isStr(t?.name) && TRACK_NAMES.includes(t.name as string))
+          .filter((t: { userId?: unknown; name?: unknown }) => isStr(t?.userId) && okName(t?.name))
           .slice(0, 32)
         if (!wanted.length) return json({ error: 'tracks gerekli' }, 400)
         // Yetki: hedef kişi benimle AYNI kanalda olmalı ve o izi gerçekten yayınlıyor olmalı
@@ -204,9 +210,9 @@ Deno.serve(async (req) => {
 
 function cleanLocal(raw: unknown): { mid: string; name: string }[] {
   return (Array.isArray(raw) ? raw : [])
-    .filter((t) => isStr(t?.mid) && isStr(t?.name) && TRACK_NAMES.includes(t.name))
+    .filter((t) => isStr(t?.mid) && okName(t?.name))
     .map((t) => ({ mid: t.mid as string, name: t.name as string }))
-    .slice(0, TRACK_NAMES.length)
+    .slice(0, 4)
 }
 
 // Üyelik, kanal izni ve kişi sınırı: livekit-token ile aynı kurallar.

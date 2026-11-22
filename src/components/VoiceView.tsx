@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Track } from 'livekit-client'
+import type { VideoSource } from '../voice/cfVoice'
 import { useApp } from '../lib/store'
 import type { Channel } from '../lib/types'
 import { useVoice, type VoiceParticipant } from '../voice/VoiceContext'
@@ -13,7 +13,7 @@ interface Tile {
   key: string
   participant: VoiceParticipant
   kind: 'screen' | 'camera' | 'avatar'
-  track?: Track
+  track?: VideoSource
 }
 
 export default function VoiceView({ channel, onToggleMembers }: { channel: Channel; onToggleMembers: () => void }) {

@@ -2,7 +2,8 @@
 // Cloudflare'de oda yok: her kişi iki bağlantı açar (yayın + dinleme). Kimin odada olduğu ve
 // hangi izleri yayınladığı `voice_sessions` tablosundan (0023) okunur; Cloudflare çağrılarını
 // `cf-voice` Edge Function yapar (gizli anahtar orada).
-// Şimdilik yalnız mikrofon sesi; kamera ve ekran sonraki aşama.
+// Mikrofon, kamera, ekran paylaşımı ve yayın sesi. İz adları: mic, cam-xxxx, screen-xxxx,
+// screen-audio-xxxx (her yayın yeni ad alır; dinleyenler eski izle karıştırmaz).
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { createRnnoiseTrack } from './rnnoise'
@@ -15,10 +16,53 @@ export interface CfMicSettings {
   aiNoise: boolean
 }
 
+/** Bir <video> öğesine bağlanabilen görüntü kaynağı (LiveKit Track ile aynı biçim) */
+export interface VideoSource {
+  attach: (el: HTMLMediaElement) => unknown
+  detach: (el: HTMLMediaElement) => unknown
+}
+
 export interface CfPeer {
   id: string
   hasMic: boolean
   speaking: boolean
+  camera?: VideoSource
+  screen?: VideoSource
+  screenAudio: boolean
+}
+
+export interface CfScreenOptions {
+  surface: 'monitor' | 'window' | 'browser'
+  audio: boolean
+  width: number
+  height: number
+  fps: number
+  maxBitrate: number
+  motion: boolean
+}
+
+type Kind = 'mic' | 'cam' | 'screen' | 'screen-audio'
+const kindOf = (name: string): Kind | null =>
+  name === 'mic' ? 'mic' : name.startsWith('screen-audio') ? 'screen-audio' : name.startsWith('screen') ? 'screen' : name.startsWith('cam') ? 'cam' : null
+const freshName = (kind: Kind) => `${kind}-${Math.random().toString(36).slice(2, 8)}`
+
+function videoSource(track: MediaStreamTrack): VideoSource {
+  const stream = new MediaStream([track])
+  return {
+    attach: (el) => {
+      el.srcObject = stream
+      el.play().catch(() => {})
+    },
+    detach: (el) => {
+      if (el.srcObject === stream) el.srcObject = null
+    },
+  }
+}
+
+interface LocalPub {
+  name: string
+  track: MediaStreamTrack
+  transceiver: RTCRtpTransceiver
 }
 
 interface SessionRow {
@@ -31,7 +75,10 @@ interface SessionRow {
 interface RemoteAudio {
   key: string
   userId: string
+  kind: Kind
   mid: string
+  attached?: boolean
+  video?: VideoSource
   el?: HTMLAudioElement
   source?: MediaStreamAudioSourceNode
   gain?: GainNode
@@ -107,7 +154,16 @@ export class CfRoom {
   private micWanted = false
   private settings: CfMicSettings = { micId: 'default', speakerId: 'default', noiseSuppression: true, echoCancellation: true, aiNoise: true }
   private volumes: Record<string, number> = {}
+  private streamVolumes: Record<string, number> = {}
   private deaf = false
+  /** Ekran paylaşımı dışarıdan bitti (tarayıcının "Paylaşmayı durdur" düğmesi) */
+  onScreenEnded: () => void = () => {}
+  private cam: LocalPub | null = null
+  private screen: LocalPub | null = null
+  private screenAud: LocalPub | null = null
+  private cameraId = ''
+  localCamera?: VideoSource
+  localScreen?: VideoSource
 
   private rows = new Map<string, SessionRow>()
   private remotes = new Map<string, RemoteAudio>() // anahtar: kullanıcı:iz:oturum
@@ -132,7 +188,25 @@ export class CfRoom {
   peers(): CfPeer[] {
     return [...this.rows.values()]
       .filter((r) => r.user_id !== this.userId)
-      .map((r) => ({ id: r.user_id, hasMic: r.tracks.includes('mic'), speaking: this.speaking.has(r.user_id) }))
+      .map((r) => {
+        const mine = [...this.remotes.values()].filter((x) => x.userId === r.user_id)
+        return {
+          id: r.user_id,
+          hasMic: r.tracks.includes('mic'),
+          speaking: this.speaking.has(r.user_id),
+          camera: mine.find((x) => x.kind === 'cam')?.video,
+          screen: mine.find((x) => x.kind === 'screen')?.video,
+          screenAudio: mine.some((x) => x.kind === 'screen-audio' && x.attached),
+        }
+      })
+  }
+
+  get cameraOn() {
+    return !!this.cam
+  }
+
+  get screenOn() {
+    return !!this.screen
   }
 
   /**
@@ -142,7 +216,7 @@ export class CfRoom {
   async connect(
     channelId: string,
     userId: string,
-    opts: { settings: CfMicSettings; micOn: boolean; deafened: boolean; volumes: Record<string, number> },
+    opts: { settings: CfMicSettings; micOn: boolean; deafened: boolean; volumes: Record<string, number>; streamVolumes: Record<string, number> },
     beforeSwitch?: () => Promise<void> | void,
   ) {
     const joined = await call<{ pubSession: string; iceServers: RTCIceServer[] }>({ action: 'join', channelId })
@@ -154,6 +228,7 @@ export class CfRoom {
     this.pubSession = joined.pubSession
     this.settings = opts.settings
     this.volumes = opts.volumes
+    this.streamVolumes = opts.streamVolumes
     this.deaf = opts.deafened
 
     const cfg: RTCConfiguration = { iceServers: joined.iceServers, bundlePolicy: 'max-bundle' }
@@ -170,7 +245,7 @@ export class CfRoom {
     subPc.addEventListener('track', (e) => {
       const mid = e.transceiver.mid
       const r = mid ? this.byMid.get(mid) : undefined
-      if (r && e.track.kind === 'audio') this.attach(r, e.track)
+      if (r) this.attach(r, e.track)
     })
 
     this.ctx = new AudioContext({ latencyHint: 'interactive' })
@@ -222,6 +297,9 @@ export class CfRoom {
     this.speakingAt.clear()
     this.stopMic()
     this.micSender = null
+    for (const p of [this.cam, this.screen, this.screenAud]) p?.track.stop()
+    this.cam = this.screen = this.screenAud = null
+    this.localCamera = this.localScreen = undefined
     this.pubPc?.close()
     this.subPc?.close()
     this.pubPc = this.subPc = null
@@ -288,7 +366,7 @@ export class CfRoom {
     const want = new Map<string, { userId: string; name: string }>()
     for (const r of this.rows.values()) {
       if (r.user_id === this.userId) continue
-      if (r.tracks.includes('mic')) want.set(`${r.user_id}:mic:${r.pub_session}`, { userId: r.user_id, name: 'mic' })
+      for (const name of r.tracks) if (kindOf(name)) want.set(`${r.user_id}:${name}:${r.pub_session}`, { userId: r.user_id, name })
     }
     return want
   }
@@ -326,7 +404,7 @@ export class CfRoom {
     for (const [key, t] of missing) {
       const hit = res.tracks.find((x) => x.userId === t.userId && x.name === t.name)
       if (hit?.mid) {
-        const r: RemoteAudio = { key, userId: t.userId, mid: hit.mid }
+        const r: RemoteAudio = { key, userId: t.userId, kind: kindOf(t.name)!, mid: hit.mid }
         this.remotes.set(key, r)
         this.byMid.set(hit.mid, r)
       } else {
@@ -341,6 +419,13 @@ export class CfRoom {
       await gathered(this.subPc)
       if (gen !== this.gen || !this.subPc.localDescription) return
       await call({ action: 'answer', sdp: this.subPc.localDescription.sdp })
+      if (gen !== this.gen || !this.subPc) return
+    }
+    // "track" olayı gelmediyse (SFU eski bir alıcıyı yeniden kullandıysa) izi alıcıdan al
+    for (const r of this.remotes.values()) {
+      if (r.attached) continue
+      const tr = this.subPc.getTransceivers().find((x) => x.mid === r.mid)
+      if (tr?.receiver.track) this.attach(r, tr.receiver.track)
     }
     if (failed) {
       window.clearTimeout(this.retryTimer)
@@ -349,7 +434,13 @@ export class CfRoom {
   }
 
   private attach(r: RemoteAudio, track: MediaStreamTrack) {
-    if (!this.ctx) return
+    if (!this.ctx || r.attached) return
+    r.attached = true
+    if (r.kind === 'cam' || r.kind === 'screen') {
+      r.video = videoSource(track)
+      this.onChange()
+      return
+    }
     const stream = new MediaStream([track])
     // Chrome: uzak WebRTC sesi bir <audio> öğesine bağlı değilse Web Audio'ya akmaz.
     // Öğe sessiz; duyulan ses kazanç düğümünden geçer (kişi başı %200'e kadar).
@@ -360,13 +451,16 @@ export class CfRoom {
     r.el = el
     r.source = this.ctx.createMediaStreamSource(stream)
     r.gain = this.ctx.createGain()
-    r.analyser = this.ctx.createAnalyser()
-    r.analyser.fftSize = 512
-    r.source.connect(r.analyser)
+    if (r.kind === 'mic') {
+      r.analyser = this.ctx.createAnalyser()
+      r.analyser.fftSize = 512
+      r.source.connect(r.analyser)
+    }
     r.source.connect(r.gain)
     r.gain.connect(this.ctx.destination)
     this.applyGain(r)
     this.ctx.resume().catch(() => {})
+    if (r.kind === 'screen-audio') this.onChange()
   }
 
   private detach(r: RemoteAudio) {
@@ -380,12 +474,18 @@ export class CfRoom {
       r.el.pause()
       r.el.srcObject = null
     }
-    r.el = r.source = r.gain = r.analyser = undefined
-    this.speaking.delete(r.userId)
+    r.el = r.source = r.gain = r.analyser = r.video = undefined
+    if (r.kind === 'mic') this.speaking.delete(r.userId)
   }
 
   private applyGain(r: RemoteAudio) {
-    if (r.gain) r.gain.gain.value = this.deaf ? 0 : this.volumes[r.userId] ?? 1
+    const v = r.kind === 'screen-audio' ? this.streamVolumes[r.userId] : this.volumes[r.userId]
+    if (r.gain) r.gain.gain.value = this.deaf ? 0 : v ?? 1
+  }
+
+  setStreamVolumes(volumes: Record<string, number>) {
+    this.streamVolumes = volumes
+    this.remotes.forEach((r) => this.applyGain(r))
   }
 
   setVolumes(volumes: Record<string, number>) {
@@ -550,6 +650,166 @@ export class CfRoom {
     }
   }
 
+  // ───────── Kamera ve ekran ─────────
+
+  /** Yayın oturumuna iz ekler (istemci offer → Cloudflare answer). pubQueue içinde çağrılır. */
+  private async publish(items: { kind: Kind; track: MediaStreamTrack; encoding?: RTCRtpEncodingParameters }[], gen: number): Promise<LocalPub[]> {
+    const pc = this.pubPc
+    if (!pc) throw new Error('bağlantı yok')
+    const pubs: LocalPub[] = items.map((it) => ({
+      name: freshName(it.kind),
+      track: it.track,
+      transceiver: pc.addTransceiver(it.track, { direction: 'sendonly', sendEncodings: it.encoding ? [it.encoding] : undefined }),
+    }))
+    try {
+      await pc.setLocalDescription(await pc.createOffer())
+      await gathered(pc)
+      if (gen !== this.gen || !pc.localDescription) throw new Error('bağlantı kapandı')
+      const res = await call<{ sdp: string | null; tracks: { name: string; error?: string }[] }>({
+        action: 'publish',
+        sdp: pc.localDescription.sdp,
+        tracks: pubs.map((p) => ({ mid: p.transceiver.mid, name: p.name })),
+      })
+      if (gen !== this.gen) throw new Error('bağlantı kapandı')
+      if (!res.sdp) throw new Error(res.tracks.find((t) => t.error)?.error ?? 'yayın başlatılamadı')
+      await pc.setRemoteDescription({ type: 'answer', sdp: res.sdp })
+      const bad = res.tracks.find((t) => t.error)
+      if (bad) throw new Error(bad.error)
+      return pubs
+    } catch (e) {
+      for (const p of pubs) {
+        p.track.stop()
+        try {
+          p.transceiver.stop()
+        } catch {
+          // yoksay
+        }
+      }
+      throw e
+    }
+  }
+
+  /** Yayını bitirir: alıcı-vericiyi durdurur, Cloudflare ile pazarlığı tamamlar. pubQueue içinde çağrılır. */
+  private async unpublish(pubs: LocalPub[], gen: number) {
+    const pc = this.pubPc
+    if (!pubs.length) return
+    const tracks = pubs.map((p) => ({ mid: p.transceiver.mid, name: p.name }))
+    for (const p of pubs) {
+      p.track.stop()
+      try {
+        p.transceiver.stop()
+      } catch {
+        // yoksay
+      }
+    }
+    if (!pc || gen !== this.gen) return
+    try {
+      await pc.setLocalDescription(await pc.createOffer())
+      await gathered(pc)
+      if (gen !== this.gen || !pc.localDescription) return
+      const res = await call<{ sdp: string | null }>({ action: 'unpublish', tracks, sdp: pc.localDescription.sdp })
+      if (gen !== this.gen) return
+      if (res.sdp) await pc.setRemoteDescription({ type: 'answer', sdp: res.sdp })
+    } catch (e) {
+      console.warn('cf-voice yayın kapatma:', e)
+      if (pc.signalingState === 'have-local-offer') await pc.setLocalDescription({ type: 'rollback' }).catch(() => {})
+    }
+  }
+
+  private enqueue(job: (gen: number) => Promise<void>, label: string) {
+    const gen = this.gen
+    this.pubQueue = this.pubQueue
+      .then(() => (gen === this.gen && this.pubPc ? job(gen) : undefined))
+      .catch((e) => {
+        if (gen === this.gen) this.onError(`${label}: ${(e as Error).message}`)
+      })
+      .then(() => this.onChange())
+    return this.pubQueue
+  }
+
+  setCamera(on: boolean, deviceId?: string) {
+    if (deviceId !== undefined) this.cameraId = deviceId
+    return this.enqueue(async (gen) => {
+      if (on === !!this.cam) return
+      if (!on) {
+        const old = this.cam!
+        this.cam = null
+        this.localCamera = undefined
+        this.onChange()
+        await this.unpublish([old], gen)
+        return
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { deviceId: this.cameraId ? { exact: this.cameraId } : undefined, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+      })
+      const track = stream.getVideoTracks()[0]
+      if (gen !== this.gen) return track.stop()
+      const [pub] = await this.publish([{ kind: 'cam', track, encoding: { maxBitrate: 1_500_000, maxFramerate: 30 } }], gen)
+      this.cam = pub
+      this.localCamera = videoSource(track)
+    }, 'Kamera açılamadı')
+  }
+
+  /** Kamera cihazı değişti: açıksa yeni cihazla yeniden başlat */
+  switchCamera(deviceId: string) {
+    this.cameraId = deviceId
+    if (!this.cam) return
+    this.enqueue(async (gen) => {
+      if (!this.cam) return
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } } })
+      const track = stream.getVideoTracks()[0]
+      if (gen !== this.gen || !this.cam) return track.stop()
+      await this.cam.transceiver.sender.replaceTrack(track)
+      this.cam.track.stop()
+      this.cam.track = track
+      this.localCamera = videoSource(track)
+    }, 'Kamera değiştirilemedi')
+  }
+
+  startScreen(o: CfScreenOptions) {
+    return this.enqueue(async (gen) => {
+      if (this.screen) return
+      // Yankı önleme: sistem sesi yakalanırken CSN'nin kendi çaldığı ses yakalamaya girmesin
+      const audio = o.audio
+        ? ({ restrictOwnAudio: true, echoCancellation: false, noiseSuppression: false, autoGainControl: false } as MediaTrackConstraints)
+        : false
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: o.surface, width: { ideal: o.width }, height: { ideal: o.height }, frameRate: { ideal: o.fps } },
+        audio,
+        systemAudio: o.audio ? 'include' : 'exclude',
+        selfBrowserSurface: 'exclude',
+        surfaceSwitching: 'include',
+        preferCurrentTab: false,
+      } as DisplayMediaStreamOptions)
+      const video = stream.getVideoTracks()[0]
+      const sound = stream.getAudioTracks()[0] as MediaStreamTrack | undefined
+      if (gen !== this.gen) return stream.getTracks().forEach((t) => t.stop())
+      video.contentHint = o.motion ? 'motion' : 'detail'
+      if (sound) sound.contentHint = 'music'
+      const items: Parameters<CfRoom['publish']>[0] = [{ kind: 'screen', track: video, encoding: { maxBitrate: o.maxBitrate, maxFramerate: o.fps } }]
+      if (sound) items.push({ kind: 'screen-audio', track: sound, encoding: { maxBitrate: 128_000 } })
+      const pubs = await this.publish(items, gen)
+      this.screen = pubs[0]
+      this.screenAud = pubs[1] ?? null
+      this.localScreen = videoSource(video)
+      video.addEventListener('ended', () => {
+        if (this.screen?.track !== video) return
+        this.stopScreen()
+        this.onScreenEnded()
+      })
+    }, 'Ekran paylaşılamadı')
+  }
+
+  stopScreen() {
+    return this.enqueue(async (gen) => {
+      const pubs = [this.screen, this.screenAud].filter((p): p is LocalPub => !!p)
+      this.screen = this.screenAud = null
+      this.localScreen = undefined
+      this.onChange()
+      await this.unpublish(pubs, gen)
+    }, 'Ekran paylaşımı kapatılamadı')
+  }
+
   // ───────── Konuşan göstergesi ─────────
 
   private buf = new Float32Array(new ArrayBuffer(512 * 4))
@@ -566,7 +826,7 @@ export class CfRoom {
         changed = true
       }
     }
-    for (const r of this.remotes.values()) mark(r.userId, r.analyser, true)
+    for (const r of this.remotes.values()) if (r.kind === 'mic') mark(r.userId, r.analyser, true)
     mark(this.userId, this.localAnalyser, this.micOn)
     this.localSpeaking = this.speaking.has(this.userId)
     if (changed) this.onChange()
