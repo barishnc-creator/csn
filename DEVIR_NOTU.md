@@ -86,13 +86,13 @@ Kurallar: kart/ödeme YOK; Cloudflare panelde kart isterse dur, kullanıcıya so
 - Belge kaynağı: bu ortamdan developers.cloudflare.com kapalı; `github.com/cloudflare/cloudflare-docs` deposundan okundu (`src/content/docs/realtime/sfu/`, OpenAPI `public/realtime/static/realtime-api-2024-05-21.yaml`).
 
 **Eksikler / sıradakiler**
+0. **ENGEL (22 Kas): Cloudflare Realtime'ı etkinleştirmek ödeme yöntemi istiyor** (kart / PayPal / Apple-Google Pay; bugün 0 $, 1.000 GB sonrası 0,05 $/GB). Kullanıcının kuralı kart yok: duruldu, karar kullanıcıda. Karar gelene kadar Cloudflare kodu yayında ama etkisiz kalır; Oracle yedeğiyle devam. #yenilikler duyurusu yazıldı (mesaj 61).
 1. (Kullanıcı) Cloudflare hesabı → Realtime → Serverless SFU → uygulama oluştur → Supabase Edge Function sırları `CF_REALTIME_APP_ID`, `CF_REALTIME_APP_TOKEN` (App Secret). Adımlar kullanıcıya verildi. Kart istenirse dur.
 2. Sırlar gelince: sahip Ayarlar → Ses sunucusu → Cloudflare seçer, iki kişiyle canlı deneme. Hata olursa `query_logs` ile cf-voice günlüklerine bak.
 3. `livekit-token`'a "mod cf iken 409" koruması depoda var ama DAĞITILMADI (yayındaki v10). Cloudflare varsayılan olmadan önce dağıt.
 4. 2. aşama: kamera + ekran (+ ekran sesi). `VoiceParticipant.camera/screen` LiveKit `Track` tipinde; `MediaStreamTrack` tabanlı ortak tipe çevir (`VoiceView.tsx`, `SettingsModal.tsx`). Sunucu tarafı hazır (iz adları `cam`, `screen`, `screen-audio`; `unpublish`).
 5. Bilinen sınırlar: yalnız STUN (UDP kapalı ağlarda bağlanamayabilir; Cloudflare TURN ayrı anahtar ister, aynı 1.000 GB kotadan); bağlantı koparsa otomatik yeniden bağlanma yok (uyarı verip odadan düşer); bas-konuşta ilk basışta mikrofon izni/yayın ~1 sn gecikir; sekmesi kapanan kişi 90 sn listede kalabilir; DTX kapalı.
 6. Oracle yedek: kullanıcı makineyi açıp `LIVEKIT_SELF_*` sırlarını ekleyince adresi `selfhost/livekit/host.txt`'e yaz, canlı test, `MAINTENANCE.active=false`, #yenilikler.
-7. #yenilikler'e bu aşamanın duyurusu YAZILMADI (MCP SQL zaman aşımı): yaz.
 
 ## Bekleyen karar
 - Masaüstü .exe imzasız: Windows 11 "Akıllı Uygulama Denetimi" açık olan bilgisayarlarda engelleniyor (egunesx'te oldu). Geçici çözüm: PWA olarak yükleme (⚙️ → Uygulama olarak yükle). Kalıcı çözüm seçenekleri (Microsoft Store, ücretsiz bireysel hesap / kod imzalama sertifikası) kullanıcıya sunuldu; **"şimdilik kalsın" dedi**, sormadan başlama.
