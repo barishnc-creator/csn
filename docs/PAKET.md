@@ -49,3 +49,11 @@ Depoda `.claude/skills` yok. Hesap skill'leri: `anthropic-skills:yazilim-test-ve
 
 ## Eski oturumlar
 CSN zinciri (hepsi arşivli): Discord uygulaması (14 Kas, ilk kurulum) → devam 2 (15 Kas) → devam 3 (15 Kas, güvenlik analizi) → devam 2 (17 Kas, yayın çerçevesi) → yayın çerçevesi (17 Kas) → devam (20–22 Kas, LiveKit/Oracle/Cloudflare) → devam 2 `session_01Ry9EYBaL2muGMRFu7bbiHN` (21–23 Kas; ~512 bin bağlam, Cloudflare SFU, ad değişikliği, Store gönderimi; 25 Kas'ta yeni oturuma devredildi).
+
+## Keşiften gelenler (25 Kas)
+
+- HeroUI (React + Tailwind v4 bileşenleri) — https://www.instagram.com/reel/Df82LSMo1zG/?gwpx=MWR4M2JvMXVtamtqbQ== — CSN arayüz yenilemesinde HeroUI'yı değerlendir (Apache-2.0)
+- Cloudflare Realtime SFU + TURN (ayda 1.000 GB ücretsiz) — https://developers.cloudflare.com/realtime/sfu/pricing/ — ses altyazısı/TURN için kullan (ana yol)
+- eturnal / coturn — https://github.com/processone/eturnal — kendi TURN sunucusu yedek yolu
+- LiveKit kendi sunucunda — https://github.com/livekit/livekit — LiveKit Cloud yerine kendi barındırma yedek yolu
+- Oracle Always Free ARM VPS — https://docs.oracle.com/en-us/iaas/Content/FreeTier/resourceref.htm — LiveKit/TURN sunucusu barındırma adayı
