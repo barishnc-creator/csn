@@ -264,7 +264,7 @@ export class CfRoom {
     this.applySpeaker()
 
     this.live = supabase
-      .channel(`voice-sessions-${channelId}`)
+      .channel(`voice-sessions-${channelId}`, { config: { private: true } })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'voice_sessions' }, (p) => {
         if (gen !== this.gen) return
         if (p.eventType === 'DELETE') this.dropRow((p.old as { user_id?: string }).user_id)

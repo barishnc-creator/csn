@@ -22,7 +22,7 @@ Arkadaş ve ekip için Discord benzeri sohbet uygulaması: metin kanalları, ses
 ## Açık işler (öncelik sırasıyla)
 1. Store sonrası: "Uygulama olarak yükle" bölümüne (`ReloadDialog.tsx` / Ayarlar) Store bağlantısı ekle (Store ürün bağlantısı kullanıcıdan/Partner Center'dan alınacak).
 2. Canlıda denenmeyenler: DM sesli arama, müzik botu, birlikte dinle, soundpad tuş atamaları, yayın yankısı düzeltmesi (`restrictOwnAudio`), oda kişi sınırı/taşıma, masaüstü 0.1.3–0.2.0 (Windows'ta denenmedi).
-3. Güvenlik: Supabase → Realtime → Settings → "Allow public access" kapatılacak (kullanıcı sohbetin canlı aktığını doğrulayınca); Auth → Leaked password protection açılması önerildi.
+3. Güvenlik: 25 Kas kullanıcı Store sürümünde "her şey sorunsuz" dedi. Son açık kanal (`cfVoice.ts` voice-sessions) private yapıldı ve yayınlandı. Sıradaki adım kullanıcıda: "Herkesi yenile" → Supabase → Realtime → Settings → "Allow public access" KAPAT → ses + sohbet denemesi. Auth → Leaked password protection açılması önerildi.
 4. Masaüstü .exe (NSIS 0.2.0) hazır ama Release çıkarılmadı; imzasız .exe Windows 11 Akıllı Uygulama Denetimi'nde engelleniyor (Store paketi bunu aşıyor).
 5. Adaylar: Cloudflare TURN anahtarı (UDP kapalı ağlar), kod bölme (JS ~1,1 MB), okunmamışların sunucuda saklanması, grup DM'leri, Android (Capacitor; kullanıcı "şimdilik kalsın" dedi, sormadan başlama).
 
